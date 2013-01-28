@@ -8,15 +8,30 @@
 #include <llvm/ValueSymbolTable.h>
 #include <llvm/Instructions.h>
 
+#include <log4cxx/logger.h>
+#include <log4cxx/basicconfigurator.h>
+
+#ifdef _DEBUG
+#include <llvm/Support/Debug.h>
+#else
+#define DEBUG_WITH_TYPE(X, Y) {}
+#endif
+
 #include <utility>
 #include <cassert>
+#include <cmath>
 
 using namespace llvm;
 using namespace chopper;
+using namespace log4cxx;
+
+LoggerPtr logger(Logger::getLogger("chopper.CtrlDep"));
 
 CtrlDep::CtrlDep():FunctionPass(CtrlDep::ID), 
     seqCounter(0)
 {
+    BasicConfigurator::configure();
+    logger->setLevel(Level::getDebug());
 }
 
 CtrlDep::~CtrlDep()
@@ -36,11 +51,11 @@ CtrlDep::~CtrlDep()
 */
 bool 
 CtrlDep::runOnFunction(Function &F) {
-    errs() << "In Func : ";
-    errs().write_escaped(F.getName()) << "\n";
+    LOG4CXX_DEBUG(logger, "CtrlDep in Func " 
+            << F.getName().data()
+            << ".\n");
 
-    PostDominatorTree &pdt = 
-        getAnalysis<PostDominatorTree>();
+    PostDominatorTree &pdt = getAnalysis<PostDominatorTree>();
     std::vector<BBEdge> edgeList;
     
 
@@ -62,7 +77,7 @@ CtrlDep::runOnFunction(Function &F) {
         }
         
         if (isEdge) {
-            for (unsigned i=0; i<termInst->getNumSuccessors(); ++i) {
+            for (unsigned i=0; i<termInst->getNumSuccessors(); i++) {
                 BasicBlock *sb = termInst->getSuccessor(i);
                 if (!pdt.dominates(sb, &bb)) {
                     edgeList.push_back(std::make_pair(sb, &bb));
@@ -81,14 +96,189 @@ CtrlDep::runOnFunction(Function &F) {
 
     traversePdt(root, bbMap, bbList, 0);
 
-    for (BBEdge edge : edgeList) {
+    LOG4CXX_DEBUG(logger, "Traversed PDT.\n");
+
+    /**
+     * Computing LCA for each candidate edge.
+     */
+    size_t blockSize = static_cast<size_t>(
+            .5*log(bbList.size())/log(2.0f));
+    size_t blockCount = bbList.size()/blockSize + 1;
+
+    // The assertion should never fail unless
+    // number of basic block in PDT. causes integer overflow.
+    assert(blockSize <= 32);
+
+    if (blockSize > 0) {
+        // stores each block into blockType array 
+        unsigned int *blockType = new unsigned int[blockCount];
+
+        // all posible answer to RMQ with the size of
+        // 2 ^ (blockSize - 1)
+        unsigned int allPosible = 
+            1 << (blockSize-1);
+        unsigned int allCombination =
+            ((blockSize+1)*blockSize) >> 1;
+
+        unsigned int *blockIndex = 
+            new unsigned int[
+                allCombination *
+                allPosible
+            ];
+
+        // fill the index table
+        for (unsigned int i = 0; 
+                i < allPosible; i++) {
+            unsigned int counter = 0;
+            blockIndex[i*allCombination] = 0;
+            for (unsigned int pi = 0; pi < blockSize-1; pi++) {
+                int tmpVal = 0;
+                // first : minimum value,
+                // second : minimum index
+                std::pair<int, unsigned int> ist = {0, pi};
+                for (unsigned int pj = pi+1; 
+                        pj < blockSize; pj++, counter++) {
+                    if ((1 << (pj-1)) & i) {
+                        // +1
+                        tmpVal += 1;
+                        if (tmpVal > ist.first) {
+                            ist.first = tmpVal;
+                            ist.second = pj;
+                        }
+                    } else {
+                        // -1
+                        tmpVal -= 1;
+                    }
+                    blockIndex[i*allCombination + 
+                       counter] = ist.second;
+                }
+            }
+            
+        }
+
+        // fill the block type array 
+        for (int i = 0; i < blockCount; i++) {
+            unsigned int type = 0;
+            unsigned int mark = 1;
+            blockType[i] = 0;
+            for (int j = 0; j < blockSize-1 && 
+                    (i*blockSize+j+1) < bbList.size();
+                    j++) {
+                if (bbList[i*blockSize + j].second.depth
+                        > bbList[i*blockSize + j+1].second.depth) {
+                    type |= mark;
+                } 
+                mark <<= 1;
+            }
+            blockType[i] = type;
+            LOG4CXX_DEBUG(logger, "block type " << i
+                    << " -> " << type );
+
+        }
+
+        LOG4CXX_DEBUG(logger, "Prepared for LCA algorithm.");
+        LOG4CXX_DEBUG(logger, "Block Size " << blockSize << ".");
+        LOG4CXX_DEBUG(logger, "Block Count " << blockCount << ".");
+        LOG4CXX_DEBUG(logger, "Block Index Capacity " 
+                << allCombination * allPosible << ".");
+
+        for (BBEdge edge : edgeList) {
+            size_t i = bbList[bbMap[edge.first]].second.id;
+            size_t j = bbList[bbMap[edge.second]].second.id;
+
+            if (i > j) {
+                size_t tmp = i;
+                i = j;
+                j = tmp;
+            }
+
+            LOG4CXX_DEBUG(logger, "node i :" << i << 
+                        ", j :" << j );
+
+            size_t noI = i/blockSize;
+            size_t noJ = j/blockSize;
+            size_t offsetI = i%blockSize;
+            size_t offsetJ = j%blockSize;
+
+            // lca index
+            size_t lca = 0;
+
+            if (noI == noJ) {
+               lca = noI*blockSize +
+                    blockIndex[
+                    blockType[noI] *
+                        allCombination + 
+                        ((((blockSize << 1)-offsetI-1)*offsetI) >> 1) + offsetJ - offsetI - 1
+                        ];
+                LOG4CXX_DEBUG(logger, 
+                        "Condition I i :" << i << 
+                        ", j :" << j << 
+                        ", lca id : " << lca );
+            } else {
+                // from i to BlockSize - 1
+                size_t leftI = 
+                    noI*blockSize +
+                    blockIndex[
+                    blockType[noI] *
+                        allCombination + 
+                        ((((blockSize << 1)-offsetI-1)*offsetI) >> 1) + blockSize - offsetI - 2
+                        ];
+                // from 0 to J
+                size_t rightJ = offsetJ == 0 ? noJ*blockSize :
+                    noJ*blockSize +
+                    blockIndex[blockType[noJ] * allCombination + offsetJ - 1];
+                // first id
+                // second depth
+                std::pair<size_t, size_t> candidate;
+                LOG4CXX_DEBUG(logger, "{block type } " << noJ << " , " << blockType[noJ] );
+                // first id
+                LOG4CXX_DEBUG(logger, "{lca i,j} " << leftI << " : " << rightJ );
+                if (bbList[leftI].second.depth < bbList[rightJ].second.depth) {
+                    candidate.first = bbList[leftI].second.id;
+                    candidate.second = bbList[leftI].second.depth;
+                } else {
+                    candidate.first = bbList[rightJ].second.id;
+                    candidate.second = bbList[rightJ].second.depth;
+                }
+
+                LOG4CXX_DEBUG(logger, "only i,j lca:" << candidate.first);
+
+                for (unsigned int i = noI+1; i < noJ; i++) {
+                    size_t mid = i*blockSize +
+                        blockIndex[blockType[i] * allCombination + blockSize - 1];
+                    if (candidate.second > bbList[mid].second.depth) {
+                        candidate.first = bbList[mid].second.id;
+                        candidate.second = bbList[mid].second.depth;
+                        LOG4CXX_DEBUG(logger, "mid " << 
+                                candidate.first << " : " 
+                                << candidate.second );
+                    }
+                }
+
+                lca = candidate.first;
+
+                LOG4CXX_DEBUG(logger, 
+                        "Condition II i :" << i << 
+                        ", j :" << j << 
+                        ", lca id : " << lca );
+            }
+        }
+
+        delete [] blockIndex;
+        delete [] blockType;
+
+    } else {
+        //TODO if block size is extremely small
+        errs () << "[WARNING]not yet implemented.\n";
     }
+
     /*
     errs() << "retrieving array ...";
     for (std::pair<BasicBlock*, BBInfo> p : bbList) {
         errs() << p.second.id << "," << p.second.depth << "->";
     }
     */
+
     
     return false;
 }

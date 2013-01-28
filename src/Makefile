@@ -1,7 +1,7 @@
 # for llvm-3.2
 CXX := clang++-3.2
-CFLAGS := -Wall `llvm-config-3.2 --cflags` -std=c++11 -fno-rtti
-LDFLAGS := `llvm-config-3.2 --ldflags`
+CFLAGS := -Wall `llvm-config-3.2 --cflags` -std=c++11 -fno-rtti -D_DEBUG
+LDFLAGS := `llvm-config-3.2 --ldflags` -llog4cxx
 LIBS := `llvm-config-3.2 --libs`
 OPT := opt-3.2
 
@@ -24,5 +24,5 @@ clean :
 	rm -f $(OBJS) $(LIBRARYNAME)
 
 test : 
-	$(OPT) -load ./CtrlDep.so -postdomtree -ctrl-dep < ../test/cksum.bc > /dev/null
+	$(OPT) -load ./CtrlDep.so -postdomtree -ctrl-dep < ../test/cksum.bc > debug.log
 

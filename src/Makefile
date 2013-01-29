@@ -24,5 +24,6 @@ clean :
 	rm -f $(OBJS) $(LIBRARYNAME)
 
 test : 
-	$(OPT) -load ./CtrlDep.so -postdomtree -ctrl-dep < ../test/cksum.bc > debug.log
+	#$(OPT) -load ./CtrlDep.so -postdomtree -ctrl-dep < ../test/cksum.bc | grep "^\[" > debug.log
+	$(OPT) -load ./CtrlDep.so -postdomtree -ctrl-dep < ../test/cp.bc | grep "^\[" > debug.log
 

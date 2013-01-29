@@ -10,6 +10,7 @@
 
 #include <log4cxx/logger.h>
 #include <log4cxx/basicconfigurator.h>
+#include <log4cxx/propertyconfigurator.h>
 
 #ifdef _DEBUG
 #include <llvm/Support/Debug.h>
@@ -25,13 +26,12 @@ using namespace llvm;
 using namespace chopper;
 using namespace log4cxx;
 
-LoggerPtr logger(Logger::getLogger("chopper.CtrlDep"));
+static LoggerPtr logger(Logger::getLogger("chopper"));
 
 CtrlDep::CtrlDep():FunctionPass(CtrlDep::ID), 
     seqCounter(0)
 {
-    BasicConfigurator::configure();
-    logger->setLevel(Level::getDebug());
+PropertyConfigurator::configure("__FILE__log4cxx.properties");
 }
 
 CtrlDep::~CtrlDep()
@@ -97,6 +97,10 @@ CtrlDep::runOnFunction(Function &F) {
     traversePdt(root, bbMap, bbList, 0);
 
     LOG4CXX_DEBUG(logger, "Traversed PDT.\n");
+    for (std::pair<BasicBlock*, BBInfo> bb : bbList) {
+        LOG4CXX_DEBUG(logger, "id." << bb.second.id
+                << " depth:" << bb.second.depth);
+    }
 
     /**
      * Computing LCA for each candidate edge.
@@ -118,7 +122,7 @@ CtrlDep::runOnFunction(Function &F) {
         unsigned int allPosible = 
             1 << (blockSize-1);
         unsigned int allCombination =
-            ((blockSize+1)*blockSize) >> 1;
+            ((blockSize-1)*blockSize) >> 1;
 
         unsigned int *blockIndex = 
             new unsigned int[
@@ -154,6 +158,10 @@ CtrlDep::runOnFunction(Function &F) {
                 }
             }
             
+        }
+
+        for (unsigned int i = 0; i < allCombination*allPosible; i++) {
+            LOG4CXX_DEBUG(logger, "bi[" << i << "]: " << blockIndex[i]);
         }
 
         // fill the block type array 
@@ -210,19 +218,23 @@ CtrlDep::runOnFunction(Function &F) {
                         allCombination + 
                         ((((blockSize << 1)-offsetI-1)*offsetI) >> 1) + offsetJ - offsetI - 1
                         ];
-                LOG4CXX_DEBUG(logger, 
+                LOG4CXX_INFO(logger, 
                         "Condition I i :" << i << 
                         ", j :" << j << 
                         ", lca id : " << lca );
             } else {
                 // from i to BlockSize - 1
-                size_t leftI = 
-                    noI*blockSize +
+                size_t leftI ;
+                if (offsetI == blockSize -1 ) {
+                    leftI = i;
+                } else {
+                    leftI = noI*blockSize +
                     blockIndex[
                     blockType[noI] *
                         allCombination + 
                         ((((blockSize << 1)-offsetI-1)*offsetI) >> 1) + blockSize - offsetI - 2
                         ];
+                }
                 // from 0 to J
                 size_t rightJ = offsetJ == 0 ? noJ*blockSize :
                     noJ*blockSize +
@@ -230,9 +242,7 @@ CtrlDep::runOnFunction(Function &F) {
                 // first id
                 // second depth
                 std::pair<size_t, size_t> candidate;
-                LOG4CXX_DEBUG(logger, "{block type } " << noJ << " , " << blockType[noJ] );
                 // first id
-                LOG4CXX_DEBUG(logger, "{lca i,j} " << leftI << " : " << rightJ );
                 if (bbList[leftI].second.depth < bbList[rightJ].second.depth) {
                     candidate.first = bbList[leftI].second.id;
                     candidate.second = bbList[leftI].second.depth;
@@ -241,11 +251,10 @@ CtrlDep::runOnFunction(Function &F) {
                     candidate.second = bbList[rightJ].second.depth;
                 }
 
-                LOG4CXX_DEBUG(logger, "only i,j lca:" << candidate.first);
 
                 for (unsigned int i = noI+1; i < noJ; i++) {
                     size_t mid = i*blockSize +
-                        blockIndex[blockType[i] * allCombination + blockSize - 1];
+                        blockIndex[blockType[i] * allCombination + blockSize - 2];
                     if (candidate.second > bbList[mid].second.depth) {
                         candidate.first = bbList[mid].second.id;
                         candidate.second = bbList[mid].second.depth;
@@ -257,7 +266,7 @@ CtrlDep::runOnFunction(Function &F) {
 
                 lca = candidate.first;
 
-                LOG4CXX_DEBUG(logger, 
+                LOG4CXX_INFO(logger, 
                         "Condition II i :" << i << 
                         ", j :" << j << 
                         ", lca id : " << lca );
@@ -268,8 +277,31 @@ CtrlDep::runOnFunction(Function &F) {
         delete [] blockType;
 
     } else {
-        //TODO if block size is extremely small
-        errs () << "[WARNING]not yet implemented.\n";
+        for (BBEdge edge : edgeList) {
+            size_t i = bbList[bbMap[edge.first]].second.id;
+            size_t j = bbList[bbMap[edge.second]].second.id;
+            size_t lca = i;
+            size_t depth = bbList[i].second.depth;
+
+            if (i > j) {
+                size_t tmp = j;
+                j = i;
+                i = tmp;
+            }
+
+            // use a naiive algorithm to find RMQ in this case
+            for (int p = i+1; p <= j; p++) {
+                if (bbList[p].second.depth < depth) {
+                    depth = bbList[p].second.depth;
+                    lca = p;
+                }
+            }
+            LOG4CXX_DEBUG(logger, 
+                    "Condition III i :" << i << 
+                    ", j :" << j << 
+                    ", lca id : " << lca );
+
+        }
     }
 
     /*
@@ -314,15 +346,15 @@ CtrlDep::traversePdt(DomTreeNode* root,
                 iter = root->begin(); iter != root->end();
                 ++iter) {
             traversePdt(*iter, bbMap, bbList, depth+1);
-        }
 
-        if (bbMap.count(rootBlock)) {
-            info = {this->seqCounter, depth};
-            bbList.push_back(std::make_pair(rootBlock, info));
-        } else {
-            assert(false);
+            if (bbMap.count(rootBlock)) {
+                info = {this->seqCounter, depth};
+                bbList.push_back(std::make_pair(rootBlock, info));
+            } else {
+                assert(false);
+            }
+            this->seqCounter += 1;
         }
-        this->seqCounter += 1;
     }
 
 }

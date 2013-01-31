@@ -9,7 +9,7 @@ LIBRARYNAME := CtrlDep.so
 
 TEST_PROGS := 
 
-SRCS := CtrlDep.cc
+SRCS := CtrlDep.cc CtrlDepWriter.cc
 OBJS := $(SRCS:%.cc=%.o)
 
 all : $(LIBRARYNAME)
@@ -17,13 +17,13 @@ all : $(LIBRARYNAME)
 %.o : %.cc
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
-CtrlDep.so : CtrlDep.o
+CtrlDep.so : CtrlDep.o CtrlDepWriter.o
 	$(CXX) $(CFLAGS) $(LDFLAGS) -shared -o $@ $^ $(LDFLAGS)
 
 clean :
 	rm -f $(OBJS) $(LIBRARYNAME)
 
 test : 
-	#$(OPT) -load ./CtrlDep.so -postdomtree -ctrl-dep < ../test/cksum.bc | grep "^\[" > debug.log
-	$(OPT) -load ./CtrlDep.so -postdomtree -ctrl-dep < ../test/cp.bc | grep "^\[" > debug.log
+	$(OPT) -load ./CtrlDep.so -postdomtree -ctrl-dep < ../test/cksum.bc | grep "^\[" > debug.log
+	#$(OPT) -load ./CtrlDep.so -postdomtree -ctrl-dep < ../test/cp.bc | grep "^\[" > debug.log
 

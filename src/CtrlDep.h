@@ -1,5 +1,5 @@
 #ifndef CTRL_DEP_H_CHOPPER
-#define CTRL_DEP_H_CHOPPER value
+#define CTRL_DEP_H_CHOPPER 
 
 #include <llvm/Pass.h>
 #include <llvm/Function.h>
@@ -26,6 +26,10 @@ namespace chopper {
         typedef std::vector<
             std::pair<BasicBlock*, BBInfo> 
         > BBList;
+        typedef llvm::DenseMap<
+            BasicBlock*,
+            std::vector<BasicBlock*>
+        > CtrlDepMap;
 
         static char ID;
 

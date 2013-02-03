@@ -12,6 +12,7 @@ TEST_PROGS :=
 SRCS := CtrlDep.cc CtrlDepWriter.cc
 OBJS := $(SRCS:%.cc=%.o)
 
+.PHONY : all clean
 all : $(LIBRARYNAME)
 
 %.o : %.cc
@@ -22,6 +23,14 @@ CtrlDep.so : CtrlDep.o CtrlDepWriter.o
 
 clean :
 	rm -f $(OBJS) $(LIBRARYNAME)
+
+.PHONY : testsimple cleansimple
+testsimple : ../test/simple/simple.bc
+	$(OPT) -load ./CtrlDep.so -postdomtree -ctrl-dep < $< | grep "^\[" > debug.log
+	dot -Tsvg cd.main.dot > cd.simple.svg
+
+cleansimple :
+	rm cd.main.dot cd.simple.svg
 
 test : 
 	$(OPT) -load ./CtrlDep.so -postdomtree -ctrl-dep < ../test/cksum.bc | grep "^\[" > debug.log

@@ -79,7 +79,7 @@ CtrlDep::runOnFunction(Function &F) {
             for (unsigned i=0; i<termInst->getNumSuccessors(); i++) {
                 BasicBlock *sb = termInst->getSuccessor(i);
                 if (!pdt.dominates(sb, &bb)) {
-                    edgeList.push_back(std::make_pair(sb, &bb));
+                    edgeList.push_back(std::make_pair(&bb, sb));
                 }
             }
         }
@@ -278,9 +278,17 @@ CtrlDep::runOnFunction(Function &F) {
                         ", lca id : " << lca );
                 BasicBlock *cdBB;
                 cdBB = bbList[eA].first;
+                size_t p;
                 if (eA < eB) {
                     // i <- eA, j <- eB
-                    for (size_t p = lca+1; p <= eB; p++) {
+                    // if lca is A, all nodes in pdt on the path A->B
+                    // loop dependence
+                    // including A & B, should make control dependence on A
+                    // otherwise, from lca -> B (lca not included)
+
+                    errs () << *cdBB << " and " << (*bbList[eB].first) << "\n";
+                    p = lca == eA ? lca : lca + 1;
+                    for (; p <= eB; p++) {
                         if (!cdMap.count(cdBB)) {
                             std::set<BasicBlock*> setref;
                             cdMap.insert(std::make_pair(cdBB, setref));
@@ -288,7 +296,9 @@ CtrlDep::runOnFunction(Function &F) {
                         cdMap[cdBB].insert(bbList[p].first);
                     }
                 } else {
-                    for (size_t p = eB; p < lca; p++) {
+                    errs () << *cdBB << " & " << (*bbList[eB].first) << "\n";
+                    size_t tmpDelim = lca == eA ? lca + 1 : lca;
+                    for (p = eB; p < tmpDelim; p++) {
                         if (!cdMap.count(cdBB)) {
                             std::set<BasicBlock*> setref;
                             cdMap.insert(std::make_pair(cdBB, setref));
@@ -334,9 +344,12 @@ CtrlDep::runOnFunction(Function &F) {
                     ", lca id : " << lca );
             BasicBlock *cdBB;
             cdBB = bbList[eA].first;
+
+            size_t p;
             if (eA < eB) {
                 // i <- eA, j <- eB
-                for (size_t p = lca+1; p <= eB; p++) {
+                p = lca == eA ? lca : lca + 1;
+                for (; p <= eB; p++) {
                     if (!cdMap.count(cdBB)) {
                         cdMap.insert(std::make_pair(cdBB, 
                                     std::set<BasicBlock*>()));
@@ -344,7 +357,8 @@ CtrlDep::runOnFunction(Function &F) {
                     cdMap[cdBB].insert(bbList[p].first);
                 }
             } else {
-                for (size_t p = eB; p < lca; p++) {
+                size_t tmpDelim = lca == eA ? lca + 1 : lca;
+                for (size_t p = eB; p < tmpDelim; p++) {
                     if (!cdMap.count(cdBB)) {
                         cdMap.insert(std::make_pair(cdBB, 
                                     std::set<BasicBlock*>()));

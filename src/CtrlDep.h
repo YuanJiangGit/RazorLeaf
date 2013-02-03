@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <utility>
+#include <set>
 
 using namespace llvm;
 
@@ -17,6 +18,8 @@ namespace chopper {
      */ 
     class CtrlDep : public FunctionPass {
     public:
+        friend class CtrlDepWriter;
+
         typedef std::pair<BasicBlock*, BasicBlock*> BBEdge;
         typedef struct {
             size_t id;
@@ -26,10 +29,17 @@ namespace chopper {
         typedef std::vector<
             std::pair<BasicBlock*, BBInfo> 
         > BBList;
+
         typedef llvm::DenseMap<
             BasicBlock*,
-            std::vector<BasicBlock*>
+            std::set<BasicBlock*>
         > CtrlDepMap;
+
+        typedef struct {
+            llvm::StringRef func;
+            CtrlDepMap cdMap;
+            BBMap bbMap;
+        } CtrlDepInfo;
 
         static char ID;
 
@@ -38,6 +48,8 @@ namespace chopper {
         virtual bool runOnFunction(Function&);
 
         virtual void getAnalysisUsage(AnalysisUsage&) const;
+
+        virtual bool doFinalization(Module&);
 
         virtual ~CtrlDep ();
     
@@ -49,6 +61,8 @@ namespace chopper {
         void traversePdt(DomTreeNode*, BBMap&, BBList&, size_t);
 
         size_t seqCounter;
+
+        std::vector<CtrlDepInfo> cds;
 
     };
 } /* chopper */

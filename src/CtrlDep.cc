@@ -1,6 +1,7 @@
 #define DEBUG_TYPE "CtrlDep"
 
 #include "CtrlDep.h"
+#include "CtrlDepWriter.h"
 
 #include <llvm/Support/CFG.h>
 #include <llvm/Support/raw_ostream.h>
@@ -31,7 +32,7 @@ static LoggerPtr logger(Logger::getLogger("chopper"));
 CtrlDep::CtrlDep():FunctionPass(CtrlDep::ID), 
     seqCounter(0)
 {
-PropertyConfigurator::configure("__FILE__log4cxx.properties");
+PropertyConfigurator::configure("log4cxx.properties");
 }
 
 CtrlDep::~CtrlDep()
@@ -52,12 +53,10 @@ CtrlDep::~CtrlDep()
 bool 
 CtrlDep::runOnFunction(Function &F) {
     LOG4CXX_DEBUG(logger, "CtrlDep in Func " 
-            << F.getName().data()
-            << ".\n");
+            << F.getName().data());
 
     PostDominatorTree &pdt = getAnalysis<PostDominatorTree>();
     std::vector<BBEdge> edgeList;
-    
 
     /* find all edge */
     for (BasicBlock &bb : F.getBasicBlockList()) {
@@ -92,6 +91,7 @@ CtrlDep::runOnFunction(Function &F) {
 
     BBMap bbMap;
     BBList bbList;
+    CtrlDepMap cdMap;
     this->seqCounter = 0;
 
     traversePdt(root, bbMap, bbList, 0);
@@ -190,14 +190,18 @@ CtrlDep::runOnFunction(Function &F) {
         LOG4CXX_DEBUG(logger, "Block Index Capacity " 
                 << allCombination * allPosible << ".");
 
+        // STEP II:
         for (BBEdge edge : edgeList) {
-            size_t i = bbList[bbMap[edge.first]].second.id;
-            size_t j = bbList[bbMap[edge.second]].second.id;
+            size_t eA = bbList[bbMap[edge.first]].second.id;
+            size_t eB = bbList[bbMap[edge.second]].second.id;
+            size_t i,j;
 
-            if (i > j) {
-                size_t tmp = i;
-                i = j;
-                j = tmp;
+            if (eA > eB) {
+                i = eB;
+                j = eA;
+            } else {
+                i = eA;
+                j = eB;
             }
 
             LOG4CXX_DEBUG(logger, "node i :" << i << 
@@ -252,9 +256,9 @@ CtrlDep::runOnFunction(Function &F) {
                 }
 
 
-                for (unsigned int i = noI+1; i < noJ; i++) {
-                    size_t mid = i*blockSize +
-                        blockIndex[blockType[i] * allCombination + blockSize - 2];
+                for (unsigned int p = noI+1; p < noJ; p++) {
+                    size_t mid = p*blockSize +
+                        blockIndex[blockType[p] * allCombination + blockSize - 2];
                     if (candidate.second > bbList[mid].second.depth) {
                         candidate.first = bbList[mid].second.id;
                         candidate.second = bbList[mid].second.depth;
@@ -266,10 +270,33 @@ CtrlDep::runOnFunction(Function &F) {
 
                 lca = candidate.first;
 
+                // STEP : insert the control dependence information into 
+                // cdMap
                 LOG4CXX_INFO(logger, 
                         "Condition II i :" << i << 
                         ", j :" << j << 
                         ", lca id : " << lca );
+                BasicBlock *cdBB;
+                cdBB = bbList[eA].first;
+                if (eA < eB) {
+                    // i <- eA, j <- eB
+                    for (size_t p = lca+1; p <= eB; p++) {
+                        if (!cdMap.count(cdBB)) {
+                            std::set<BasicBlock*> setref;
+                            cdMap.insert(std::make_pair(cdBB, setref));
+                        } 
+                        cdMap[cdBB].insert(bbList[p].first);
+                    }
+                } else {
+                    for (size_t p = eB; p < lca; p++) {
+                        if (!cdMap.count(cdBB)) {
+                            std::set<BasicBlock*> setref;
+                            cdMap.insert(std::make_pair(cdBB, setref));
+                        } 
+                        cdMap[cdBB].insert(bbList[p].first);
+                    }
+                }
+
             }
         }
 
@@ -278,16 +305,20 @@ CtrlDep::runOnFunction(Function &F) {
 
     } else {
         for (BBEdge edge : edgeList) {
-            size_t i = bbList[bbMap[edge.first]].second.id;
-            size_t j = bbList[bbMap[edge.second]].second.id;
+            size_t eA = bbList[bbMap[edge.first]].second.id;
+            size_t eB = bbList[bbMap[edge.second]].second.id;
+            size_t i,j;
+
+            if (eA > eB) {
+                i = eB;
+                j = eA;
+            } else {
+                i = eA;
+                j = eB;
+            }
+
             size_t lca = i;
             size_t depth = bbList[i].second.depth;
-
-            if (i > j) {
-                size_t tmp = j;
-                j = i;
-                i = tmp;
-            }
 
             // use a naiive algorithm to find RMQ in this case
             for (int p = i+1; p <= j; p++) {
@@ -296,22 +327,48 @@ CtrlDep::runOnFunction(Function &F) {
                     lca = p;
                 }
             }
+
             LOG4CXX_DEBUG(logger, 
                     "Condition III i :" << i << 
                     ", j :" << j << 
                     ", lca id : " << lca );
+            BasicBlock *cdBB;
+            cdBB = bbList[eA].first;
+            if (eA < eB) {
+                // i <- eA, j <- eB
+                for (size_t p = lca+1; p <= eB; p++) {
+                    if (!cdMap.count(cdBB)) {
+                        cdMap.insert(std::make_pair(cdBB, 
+                                    std::set<BasicBlock*>()));
+                    } 
+                    cdMap[cdBB].insert(bbList[p].first);
+                }
+            } else {
+                for (size_t p = eB; p < lca; p++) {
+                    if (!cdMap.count(cdBB)) {
+                        cdMap.insert(std::make_pair(cdBB, 
+                                    std::set<BasicBlock*>()));
+                    } 
+                    cdMap[cdBB].insert(bbList[p].first);
+                }
+            }
 
         }
     }
 
-    /*
-    errs() << "retrieving array ...";
-    for (std::pair<BasicBlock*, BBInfo> p : bbList) {
-        errs() << p.second.id << "," << p.second.depth << "->";
-    }
-    */
-
+    CtrlDepInfo info = {
+        F.getName(),
+        cdMap,
+        bbMap
+    };
+    cds.push_back(info);
     
+    return false;
+}
+
+bool 
+CtrlDep::doFinalization(Module &M) {
+    CtrlDepWriter::write(this);
     return false;
 }
 

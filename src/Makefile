@@ -5,7 +5,7 @@ LDFLAGS := `llvm-config-3.2 --ldflags` -llog4cxx
 LIBS := `llvm-config-3.2 --libs`
 OPT := opt-3.2
 
-LIBRARYNAME := CtrlDep.so
+LIBRARYNAME := CtrlDep.so DataDep.so
 
 TEST_PROGS := 
 
@@ -19,10 +19,13 @@ all : $(LIBRARYNAME)
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
 CtrlDep.so : CtrlDep.o CtrlDepWriter.o
-	$(CXX) $(CFLAGS) $(LDFLAGS) -shared -o $@ $^ $(LDFLAGS)
+	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
+
+DataDep.so : DataDep.o
+	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
 
 clean :
-	rm -f $(OBJS) $(LIBRARYNAME)
+	rm -f $(OBJS) $(LIBRARYNAME) *.svg *.dot
 
 .PHONY : testsimple cleansimple
 testsimple : ../test/simple/simple.bc
@@ -33,6 +36,7 @@ cleansimple :
 	rm cd.main.dot cd.simple.svg
 
 test : 
-	$(OPT) -load ./CtrlDep.so -postdomtree -ctrl-dep < ../test/cksum.bc | grep "^\[" > debug.log
+	# $(OPT) -load ./CtrlDep.so -postdomtree -ctrl-dep < ../test/cksum.bc | grep "^\[" > debug.log
+	$(OPT) -load ./DataDep.so -memdep -data-dep < ../test/cksum/cksum.ll 
 	#$(OPT) -load ./CtrlDep.so -postdomtree -ctrl-dep < ../test/cp.bc | grep "^\[" > debug.log
 

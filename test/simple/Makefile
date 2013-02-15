@@ -2,15 +2,19 @@ include ../common.mk
 
 .PHONY : all clean
 
-all : simple.bc simple.ll
+SRCS := $(wildcard *.c)
+BYTE_CODES := $(SRCS:%.c=%.bc)
+IRS := $(SRCS:%.c=%.ll)
 
-simple.bc : simple.c
+all : $(BYTE_CODES) $(IRS)
+
+%.bc : %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-simple.ll : simple.bc
+%.ll : %.bc
 	$(LLVM_DIS) $<
 	
 
 clean : 
-	rm -f simple.bc simple.ll
+	rm -f $(BYTE_CODES) $(IRS)
 

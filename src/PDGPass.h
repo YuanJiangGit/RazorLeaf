@@ -7,16 +7,16 @@
 using namespace llvm;
 
 namespace chopper {
-    class DataDep : public FunctionPass {
+    class PDGPass : public FunctionPass {
     public:
         static char ID;
-        DataDep ();
+        PDGPass ();
 
         virtual bool runOnFunction(Function&);
 
         virtual void getAnalysisUsage(AnalysisUsage&) const;
 
-        virtual ~DataDep ();
+        virtual ~PDGPass ();
     
     private:
     };

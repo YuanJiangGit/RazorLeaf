@@ -3,8 +3,8 @@
 
 #include <llvm/Instruction.h>
 #include <llvm/BasicBlock.h>
-#include <llvm/Analysis/MemoryDependenceAnalysis.h>
-#include <llvm/Analysis/AliasAnalysis.h>
+#include <llvm/Instruction.h>
+#include <llvm/Instructions.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SmallVector.h>
@@ -12,6 +12,7 @@
 
 #include "CtrlDep.h"
 #include "GraphWriter.h"
+#include "PDG.h"
 /*
 #include <log4cxx/logger.h>
 #include <log4cxx/basicconfigurator.h>
@@ -29,6 +30,80 @@ char PDGPass::ID = 0;
 
 PDGPass::PDGPass() : FunctionPass(PDGPass::ID)
 {
+}
+
+PDG*
+PDGPass::buildPDG(Function &f, 
+        MemoryDependenceAnalysis &mda, 
+        AliasAnalysis &aa)
+{
+    PDG *pdg = new PDG();
+
+    for (BasicBlock &bb : f) {
+        for (Instruction &inst : bb) {
+            // find all uses
+            for (Instruction::use_iterator iter = inst.use_begin();
+                    iter != inst.use_end(); iter++) {
+                Instruction *use = dyn_cast<Instruction>(*iter);
+                if (use) {
+                    pdg->addEdge(&inst, use, 0);
+                }
+            }
+
+            // memeory dependence
+            if (inst.mayReadOrWriteMemory()) {
+                MemDepResult mdaResult = mda.getDependency(&inst);
+                //Instruction *depInst = mdaResult.getInst();
+                //MemDepResult mdaResult = MemDepResult::getDef(inst);
+
+                if (mdaResult.isDef()) {
+                    pdg->addEdge(mdaResult.getInst(),
+                            &inst, PDG::PDG_MEMDEP);
+                } else if (mdaResult.isNonLocal()) {
+                    SmallVector<NonLocalDepResult, 400> nldResults;
+                    AliasAnalysis::Location loc;
+
+                    LoadInst *LI;
+                    StoreInst *SI;
+                    VAArgInst *VI;
+                    AtomicCmpXchgInst *CXI;
+                    AtomicRMWInst *RMWI;
+                    if ((LI = dyn_cast<LoadInst>(&inst))) {
+                        loc = aa.getLocation(LI);
+                    } else if ((SI = dyn_cast<StoreInst>(&inst))) {
+                        loc = aa.getLocation(SI);
+                    } else if ((VI = dyn_cast<VAArgInst>(&inst))) {
+                        loc = aa.getLocation(VI);
+                    } else if ((CXI = 
+                                dyn_cast<AtomicCmpXchgInst>(&inst))) {
+                        loc = aa.getLocation(CXI);
+                    } else if ((RMWI = 
+                                dyn_cast<AtomicRMWInst>(&inst))) {
+                        loc = aa.getLocation(RMWI);
+                    } else {
+                        continue;
+                    }
+                        
+                    if (inst.mayReadFromMemory()) {
+                        mda.getNonLocalPointerDependency(
+                            loc, true, inst.getParent(), nldResults);
+                    } else {
+                        mda.getNonLocalPointerDependency(
+                            loc, false, inst.getParent(), nldResults);
+                    }
+                    for (NonLocalDepResult &nldResult : nldResults) {
+                        Instruction *depInst = 
+                            nldResult.getResult().getInst();
+                        if (nldResult.getResult().isDef()) {
+                            pdg->addEdge(depInst,&inst,PDG::PDG_MEMDEP);
+                        }
+                    }
+                } // end of non local
+            }
+
+        }
+    }
+    return pdg;
 }
 
 bool
@@ -56,6 +131,10 @@ PDGPass::runOnFunction(Function &f)
         getAnalysis<MemoryDependenceAnalysis>();
     AliasAnalysis &aa =
         getAnalysis<AliasAnalysis>();
+    errs() << "aa pass : " << aa.getPassName() << ".\n";
+    PDG *pdg = buildPDG(f, mda, aa);
+    string ddFilename = "dd." + f.getName().str() + ".dot";
+    GraphWriter::writePDG(pdg, ddFilename);
     /*
     LoopInfo &li =
         getAnalysis<LoopInfo>(); 

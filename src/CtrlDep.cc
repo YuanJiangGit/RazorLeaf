@@ -99,9 +99,11 @@ CtrlDep::tarjanOLCA(DomTreeNode *root)
             }
             if (dtnMap.count(v) && dtnMap[v].isMarked) {
                 BasicBlock *lca = dtnMap[find(v)].ancestor->getBlock();
+                /*
                 errs() << "lca of \"" << edge.first->getName()
                     << "\" and \"" << edge.second->getName()
                     << "\" :\n";
+                    */
                 edge.isMarked = true;
                 if (lca) {
                     errs() << lca->getName() << ".\n";

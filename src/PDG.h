@@ -17,7 +17,8 @@ class PDG {
 public:
     enum pdg_vertex_type {
         PDG_LOOP_CARRIED,
-        PDG_LOOP_INDEPENDENT
+        PDG_LOOP_INDEPENDENT,
+        PDG_MEMDEP = 0x10
     };
 
     typedef struct {

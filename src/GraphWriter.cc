@@ -24,7 +24,7 @@ GraphWriter::writeCDG(CDG* cdg, string& filename)
 
     size_t counter = 0;
     for (CDG::iterator iter = cdg->begin();
-            iter != cdg->end(); iter++) {
+            iter != cdg->end(); iter++, counter++) {
         CDG::Vertex &vertex = (*iter);
         string bbName;
         if (vertex.bb) {
@@ -38,7 +38,6 @@ GraphWriter::writeCDG(CDG* cdg, string& filename)
             fs << "bb" << counter << " -> "
                 << "bb" << id << ";\n";
         }
-        counter ++;
     }
 
     fs << "}\n";
@@ -56,7 +55,25 @@ GraphWriter::writePDG(PDG* pdg, string& filename)
     if (errorInfo.length() > 0) {
         //TODO exception
     }
+    fs << "digraph g {\n";
+    size_t counter = 0;
+    for (PDG::iterator iter = pdg->begin();
+            iter != pdg->end(); iter++, counter++) {
+        PDG::Vertex &vertex = (*iter);
+        string edgeLabel = "";
+        fs << "inst" << counter << "[label=\""
+            << *(vertex.inst) << "\"];\n";
+        for (PDG::AdjVertex &adjVertex : vertex.adjList) {
+            if (adjVertex.type & PDG::PDG_MEMDEP) {
+                edgeLabel = "[label=\"memory\"]";
+            }
 
+            fs << "inst" << counter << " -> "
+                << "inst" << adjVertex.id << edgeLabel << ";\n";
+        }
+    }
+
+    fs << "}\n";
     fs.close();
 
 }

@@ -5,65 +5,85 @@
 #include <llvm/Function.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/Analysis/Dominators.h>
+#include <llvm/Analysis/PostDominators.h>
 
 #include <vector>
+#include <list>
 #include <utility>
 #include <set>
 
 using namespace llvm;
 
+using std::list;
+using std::vector;
+
 namespace chopper {
+    /**
+     * Control Dependence Graph.
+     */
+    class CDG {
+    public:
+        typedef list<unsigned int> AdjList;
+        typedef struct {
+            BasicBlock *bb;
+            AdjList adjList;
+        } Vertex;
+
+        typedef vector<Vertex> VertexSet;
+        typedef VertexSet::iterator iterator;
+
+        void addEdge(BasicBlock*, BasicBlock*);
+
+        inline iterator begin() 
+        { return vertexSet.begin(); }
+
+        inline iterator end() 
+        { return vertexSet.end(); }
+
+        CDG();
+        virtual ~CDG ();
+    private:
+        VertexSet vertexSet;
+    };
+
     /** 
      * Calculates control dependence in every function.
      */ 
-    class CtrlDep : public FunctionPass {
+    class CtrlDep {
     public:
-        friend class CtrlDepWriter;
+        //friend class CtrlDepWriter;
 
-        typedef std::pair<BasicBlock*, BasicBlock*> BBEdge;
         typedef struct {
-            size_t id;
-            size_t depth;
+            BasicBlock *first, *second;
+            bool isMarked;
+        } BBEdge;
+
+        typedef struct {
+            DomTreeNode *parent;
+            DomTreeNode *ancestor;
+            DomTreeNode *father;
+            bool isMarked;
+            int rank;
         } BBInfo;
-        typedef llvm::DenseMap<BasicBlock*, size_t> BBMap;
-        typedef std::vector<
-            std::pair<BasicBlock*, BBInfo> 
-        > BBList;
+        typedef llvm::DenseMap<DomTreeNode*, BBInfo> BBMap;
+       
+        CtrlDep (Function*, PostDominatorTree*);
 
-        typedef llvm::DenseMap<
-            BasicBlock*,
-            std::set<BasicBlock*>
-        > CtrlDepMap;
-
-        typedef struct {
-            llvm::StringRef func;
-            CtrlDepMap cdMap;
-            BBMap bbMap;
-        } CtrlDepInfo;
-
-        static char ID;
-
-        CtrlDep ();
-
-        virtual bool runOnFunction(Function&);
-
-        virtual void getAnalysisUsage(AnalysisUsage&) const;
-
-        virtual bool doFinalization(Module&);
+        CDG* getCDG();
 
         virtual ~CtrlDep ();
     
     private:
-        /**
-         * Perform an euler tour around post dominator tree
-         * to downgrade the LCA to RMQ problem.
-         */
-        void traversePdt(DomTreeNode*, BBMap&, BBList&, size_t);
-
-        size_t seqCounter;
-
-        std::vector<CtrlDepInfo> cds;
-
+        Function *func;
+        PostDominatorTree *pdt;
+        CDG *cdg;
+        BBMap dtnMap;
+        std::vector<BBEdge> edgeList;
+        void findAllEdges();
+        void tarjanOLCA(DomTreeNode *);
+        void traversePDT(DomTreeNode *, DomTreeNode *);
+        void unionSet(DomTreeNode *, DomTreeNode *);
+        DomTreeNode* find(DomTreeNode *);
     };
 } /* chopper */
 

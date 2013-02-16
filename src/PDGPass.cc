@@ -8,7 +8,10 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SmallVector.h>
-#include <llvm/Analysis/PostDominatorTree.h>
+#include <llvm/Analysis/PostDominators.h>
+
+#include "CtrlDep.h"
+#include "GraphWriter.h"
 /*
 #include <log4cxx/logger.h>
 #include <log4cxx/basicconfigurator.h>
@@ -39,6 +42,16 @@ PDGPass::runOnFunction(Function &f)
         InstInfo
     > InstMap;
 
+    errs() << "in function " << f.getName() << " .\n";
+
+    PostDominatorTree &pdt =
+        getAnalysis<PostDominatorTree>();
+    CtrlDep cd(&f, &pdt);
+    CDG *cdg = cd.getCDG();
+    //pdt.releaseMemory();
+    string cdFilename = "cd." + f.getName().str() + ".dot";
+    GraphWriter::writeCDG(cdg, cdFilename);
+    
     MemoryDependenceAnalysis &mda = 
         getAnalysis<MemoryDependenceAnalysis>();
     AliasAnalysis &aa =
@@ -46,7 +59,6 @@ PDGPass::runOnFunction(Function &f)
     /*
     LoopInfo &li =
         getAnalysis<LoopInfo>(); 
-        */
     string filename = "dd." + f.getName().str() + ".dot";
     string errorInfo;
     raw_fd_ostream fs(filename.c_str(), errorInfo);
@@ -96,7 +108,7 @@ PDGPass::runOnFunction(Function &f)
             }
         }
 
-        /* memery dependence */
+        //memory dependence
         if (inst->mayReadOrWriteMemory()) {
             MemDepResult mdaResult = mda.getDependency(inst);
             Instruction *depInst = mdaResult.getInst();
@@ -149,6 +161,7 @@ PDGPass::runOnFunction(Function &f)
     fs << "}\n";
 
     fs.close();
+    */
     mda.releaseMemory();
 
     return false;

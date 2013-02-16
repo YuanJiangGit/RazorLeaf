@@ -9,7 +9,7 @@ LIBRARYNAME := PDGPass.so # CtrlDep.so DataDep.so
 
 TEST_PROGS := 
 
-SRCS := CtrlDep.cc CtrlDepWriter.cc
+SRCS := CtrlDep.cc GraphWriter.cc PDGPass.cc PDG.cc
 OBJS := $(SRCS:%.cc=%.o)
 
 .PHONY : all clean
@@ -21,7 +21,7 @@ all : $(LIBRARYNAME)
 CtrlDep.so : CtrlDep.o CtrlDepWriter.o
 	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
 
-PDGPass.so : PDGPass.o PDG.o
+PDGPass.so : GraphWriter.o PDGPass.o CtrlDep.o PDG.o
 	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
 
 clean :

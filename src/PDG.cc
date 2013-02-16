@@ -50,7 +50,7 @@ PDG::addEdge(Instruction *source,
         tid, type
     };
 
-    vertexSet[sid].adjList.insert(adjV);
+    vertexSet[sid].adjList.push_back(adjV);
 }
 
 PDG::~PDG()

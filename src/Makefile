@@ -19,10 +19,10 @@ all : $(LIBRARYNAME)
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
 PDGPass.so : GraphWriter.o PDGPass.o CtrlDep.o PDG.o Serializer.o
-	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS) ./libjson.so
+	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS) ./libjson.a
 
 clean :
-	rm -f $(OBJS) $(LIBRARYNAME) *.svg *.dot
+	rm -f $(OBJS) $(LIBRARYNAME) *.svg *.dot *.json
 
 .PHONY : testsimple cleansimple
 testsimple : ../test/simple/simple.bc

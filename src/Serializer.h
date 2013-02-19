@@ -3,9 +3,12 @@
 
 #include <string>
 #include <exception>
+#include <llvm/Function.h>
 
 using std::string;
 using std::exception;
+
+using llvm::Function;
 
 namespace chopper {
     class PDG;
@@ -26,6 +29,7 @@ namespace chopper {
             string funcname;
             PDG *pdg;
             CDG *cdg;
+            Function *func;
         } SerialInfo;
         Serializer ();
         static void serialize(SerialInfo&);

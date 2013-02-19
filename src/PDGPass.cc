@@ -139,7 +139,7 @@ PDGPass::runOnFunction(Function &f)
     Serializer::SerialInfo info = {
         jsonFilename,
         f.getName().str(),
-        pdg, cdg
+        pdg, cdg, &f
     };
     Serializer::serialize(info);
     mda.releaseMemory();

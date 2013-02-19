@@ -9,7 +9,7 @@ LIBRARYNAME := PDGPass.so # CtrlDep.so DataDep.so
 
 TEST_PROGS := 
 
-SRCS := CtrlDep.cc GraphWriter.cc PDGPass.cc PDG.cc
+SRCS := CtrlDep.cc GraphWriter.cc PDGPass.cc PDG.cc Serializer.cc
 OBJS := $(SRCS:%.cc=%.o)
 
 .PHONY : all clean
@@ -18,11 +18,8 @@ all : $(LIBRARYNAME)
 %.o : %.cc
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
-CtrlDep.so : CtrlDep.o CtrlDepWriter.o
-	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
-
-PDGPass.so : GraphWriter.o PDGPass.o CtrlDep.o PDG.o
-	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
+PDGPass.so : GraphWriter.o PDGPass.o CtrlDep.o PDG.o Serializer.o
+	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS) ./libjson.so
 
 clean :
 	rm -f $(OBJS) $(LIBRARYNAME) *.svg *.dot

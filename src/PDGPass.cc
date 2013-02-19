@@ -13,6 +13,7 @@
 #include "CtrlDep.h"
 #include "GraphWriter.h"
 #include "PDG.h"
+#include "Serializer.h"
 /*
 #include <log4cxx/logger.h>
 #include <log4cxx/basicconfigurator.h>
@@ -89,14 +90,14 @@ PDGPass::buildPDG(Function &f,
                             loc, true, inst.getParent(), nldResults);
                     } else {
                         mda.getNonLocalPointerDependency(
-                            loc, false, inst.getParent(), nldResults);
+                            loc, true, inst.getParent(), nldResults);
                     }
                     for (NonLocalDepResult &nldResult : nldResults) {
                         Instruction *depInst = 
                             nldResult.getResult().getInst();
-                        if (nldResult.getResult().isDef()) {
+                    //    if (nldResult.getResult().isDef()) {
                             pdg->addEdge(depInst,&inst,PDG::PDG_MEMDEP);
-                        }
+                     //   }
                     }
                 } // end of non local
             }
@@ -125,122 +126,22 @@ PDGPass::runOnFunction(Function &f)
     CDG *cdg = cd.getCDG();
     //pdt.releaseMemory();
     string cdFilename = "cd." + f.getName().str() + ".dot";
-    GraphWriter::writeCDG(cdg, cdFilename);
+    //GraphWriter::writeCDG(cdg, cdFilename);
     
     MemoryDependenceAnalysis &mda = 
         getAnalysis<MemoryDependenceAnalysis>();
     AliasAnalysis &aa =
         getAnalysis<AliasAnalysis>();
-    errs() << "aa pass : " << aa.getPassName() << ".\n";
     PDG *pdg = buildPDG(f, mda, aa);
     string ddFilename = "dd." + f.getName().str() + ".dot";
-    GraphWriter::writePDG(pdg, ddFilename);
-    /*
-    LoopInfo &li =
-        getAnalysis<LoopInfo>(); 
-    string filename = "dd." + f.getName().str() + ".dot";
-    string errorInfo;
-    raw_fd_ostream fs(filename.c_str(), errorInfo);
-
-    if (errorInfo.size() > 0) {
-        errs() << "error when opening file \n";
-        return false;
-    }
-
-    InstMap instMap;
-
-    vector<Instruction*> insts;
-
-    //analysis loops
-
-    unsigned int instCounter = 0;
-    unsigned int bbCounter = 0;
-
-    fs << "digraph g{\n";
-    fs << "label = \"Data dependence in function '" 
-        << f.getName() << "\";\n";
-
-    for (BasicBlock &bb : f) {
-        fs << "subgraph cluster" << bbCounter 
-            << " {\n label = \"" << bb.getName() << "\";\n";
-        fs << "color=blue;\n";
-        for (Instruction &inst : bb) {
-            fs << "inst" << instCounter << "[label=\"" 
-                << inst << "\"];\n";
-            InstInfo instInfo = { instCounter };
-            instMap.insert(std::make_pair(&inst,
-                        instInfo));
-            instCounter ++;
-        }
-        fs << "}\n";
-        bbCounter ++;
-    }
-
-    for (std::pair<Instruction*, InstInfo> &info : instMap) {
-        Instruction *inst = info.first;
-        for (Instruction::use_iterator iter = inst->use_begin();
-                iter != inst->use_end(); iter++) {
-            Instruction *use = dyn_cast<Instruction>(*iter);
-            if (use) {
-                fs << "inst" << info.second.id << " -> inst"
-                    << instMap[use].id << ";\n";
-            }
-        }
-
-        //memory dependence
-        if (inst->mayReadOrWriteMemory()) {
-            MemDepResult mdaResult = mda.getDependency(inst);
-            Instruction *depInst = mdaResult.getInst();
-            //MemDepResult mdaResult = MemDepResult::getDef(inst);
-            //depInst = mdaResult.getInst();
-
-
-            errs() << *inst << " \n depends on \n"
-                << *depInst  << "\n";
-            if (mdaResult.isClobber()) {
-                errs() << "Clobber.\n";
-                fs << "inst" << instMap[depInst].id 
-                    << " -> inst" << info.second.id 
-                    << "[color=\"green\"];\n";
-            } else if (mdaResult.isDef()) {
-                errs() << "Def.\n";
-                fs << "inst" << instMap[depInst].id 
-                    << " -> inst" << info.second.id 
-                    << "[color=\"coral\"];\n";
-            } else if (mdaResult.isNonLocal()) {
-                SmallVector<NonLocalDepResult, 400> nldResults;
-                if (inst->mayReadFromMemory()) {
-                    mda.getNonLocalPointerDependency(
-                        aa.getLocation(dyn_cast<LoadInst>(inst)),
-                        true,
-                        inst->getParent(),
-                        nldResults);
-                } else {
-                    mda.getNonLocalPointerDependency(
-                        aa.getLocation(dyn_cast<StoreInst>(inst)),
-                        false,
-                        inst->getParent(),
-                        nldResults);
-                }
-                for (NonLocalDepResult &nldResult : nldResults) {
-                    Instruction *depInst = 
-                        nldResult.getResult().getInst();
-                    if (nldResult.getResult().isDef()) {
-                fs << "inst" << instMap[depInst].id 
-                    << " -> inst" << info.second.id 
-                    << "[color=\"red\"];\n";
-                    }
-                }
-            }
-            errs() << "-------------- \n";
-
-        }
-    }
-
-    fs << "}\n";
-
-    fs.close();
-    */
+    string jsonFilename = f.getName().str() + ".json";
+    //GraphWriter::writePDG(pdg, ddFilename);
+    Serializer::SerialInfo info = {
+        jsonFilename,
+        f.getName().str(),
+        pdg, cdg
+    };
+    Serializer::serialize(info);
     mda.releaseMemory();
 
     return false;

@@ -3,11 +3,14 @@
 
 #include <vector>
 #include <list>
+#include <set>
+#include <functional>
 
 #include <llvm/Instruction.h>
 
 using std::vector;
-using std::list;
+using std::less;
+using std::set;
 
 using llvm::Instruction;
 
@@ -25,7 +28,14 @@ public:
         unsigned int id, type;
     } AdjVertex;
 
-    typedef list<AdjVertex> AdjList;
+    struct AdjVertexComp {
+        bool operator() (const PDG::AdjVertex& lhs,
+            const PDG::AdjVertex& rhs) const {
+        return lhs.id < rhs.id;
+        }
+    };
+
+    typedef set<AdjVertex, AdjVertexComp> AdjList;
 
     typedef struct {
         bool isMarked;
@@ -50,8 +60,10 @@ public:
 private:
     VertexSet vertexSet;
 };
+
     
 } /* chopper */
+   
 
 #endif
 

@@ -50,7 +50,13 @@ PDG::addEdge(Instruction *source,
         tid, type
     };
 
-    vertexSet[sid].adjList.push_back(adjV);
+    AdjList &adjList = vertexSet[sid].adjList;
+    if (adjList.count(adjV)) {
+        AdjList::iterator existedV = adjList.find(adjV);
+        adjV.type |= existedV->type;
+        adjList.erase(existedV);
+    } 
+    adjList.insert(adjV);
 }
 
 PDG::~PDG()

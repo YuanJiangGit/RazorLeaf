@@ -60,10 +60,11 @@ GraphWriter::writePDG(PDG* pdg, string& filename)
     for (PDG::iterator iter = pdg->begin();
             iter != pdg->end(); iter++, counter++) {
         PDG::Vertex &vertex = (*iter);
+        if (!vertex.inst) { continue; }
         string edgeLabel = "";
         fs << "inst" << counter << "[label=\""
-            << *(vertex.inst) << "\"];\n";
-        for (PDG::AdjVertex &adjVertex : vertex.adjList) {
+           << *(vertex.inst) << "\"];\n";
+        for (const PDG::AdjVertex &adjVertex : vertex.adjList) {
             if (adjVertex.type & PDG::PDG_MEMDEP) {
                 edgeLabel = "[label=\"memory\"]";
             }

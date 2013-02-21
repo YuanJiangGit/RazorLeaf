@@ -1,0 +1,12 @@
+{
+    "name" : "llvm-slicer-server",
+    "version" : "0.0.5",
+    "dependencies" : {
+        "mongoose" : "3.5.6",
+        "express" : "3.1.0",
+        "mongodb" : "1.2.12"
+    }
+}
+
+
+

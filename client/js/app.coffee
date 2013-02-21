@@ -1,14 +1,15 @@
 define ['jquery', 'underscore', 'backbone', 'ace/ace'], ($, _, Backbone, ace) ->
-    editor = ace.edit 'editor'
-    editor.setTheme 'ace/theme/monokai'
-    editor.getSession().setMode('ace/mode/c_cpp')
 
     SourceCode = Backbone.Model.extend
         defaults :
             text : ''
             type : ''
-        urlRoot : 'sourcecode'
+        urlRoot : '/llvm/source'
 
+    editor = ace.edit 'editor'
+    editor.setTheme 'ace/theme/monokai'
+    editor.getSession().setMode('ace/mode/c_cpp')
+    
     CompileButton = Backbone.View.extend
         tagName : 'button'
         className : 'bt-cc'
@@ -17,6 +18,14 @@ define ['jquery', 'underscore', 'backbone', 'ace/ace'], ($, _, Backbone, ace) ->
         onClick : (e) ->
             e.preventDefault()
             e.stopPropagation()
+            @model.set 'text', editor.getValue()
+            Backbone.sync 'create', @model,
+                success : (data) ->
+                    console.log 'success: ', data
+                    false
+                error : (e) ->
+                    console.log 'error: ', e
+                    false
 
             false
 
@@ -29,8 +38,9 @@ define ['jquery', 'underscore', 'backbone', 'ace/ace'], ($, _, Backbone, ace) ->
             @
 
     init : () ->
-        uis = [ new CompileButton() ]
-        _.map uis, (ui) ->
+        sourceCode = new SourceCode({text:'aasdf'})
+        uis = [ new CompileButton({model : sourceCode}) ]
+        _.each uis, (ui) ->
             ui.render()
         false
 

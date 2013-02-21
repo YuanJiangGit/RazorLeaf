@@ -13,7 +13,10 @@ SRCS := CtrlDep.cc GraphWriter.cc PDGPass.cc PDG.cc Serializer.cc
 OBJS := $(SRCS:%.cc=%.o)
 
 .PHONY : all clean
-all : $(LIBRARYNAME)
+all : $(LIBRARYNAME) 
+
+%.js : %.coffee
+	$(COFFEE) $(COFFEE_FLAGS) -c $^
 
 %.o : %.cc
 	$(CXX) $(CFLAGS) -c -o $@ $<

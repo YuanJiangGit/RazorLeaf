@@ -4,7 +4,8 @@
     "dependencies" : {
         "mongoose" : "3.5.6",
         "express" : "3.1.0",
-        "mongodb" : "1.2.12"
+        "mongodb" : "1.2.12",
+        "getenv" : "0.3.0"
     }
 }
 

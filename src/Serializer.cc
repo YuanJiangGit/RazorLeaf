@@ -40,7 +40,6 @@ Serializer::~Serializer()
 static int
 serializer_printer_cb(void *userdata, const char *s, uint32_t length)
 {
-    //errs() << s << "[" << length << "]\n";
 
     fwrite(s, sizeof(char), length, (FILE*)userdata);
     return 0;
@@ -50,7 +49,7 @@ void
 Serializer::serialize(SerialInfo &sInfo)
 {
     json_printer print;
-    FILE *fp = fopen(sInfo.filename.c_str(), "w+");
+    FILE *fp = sInfo.fp;
     if (!fp) {
         throw new SerializerException("file open");
     }
@@ -61,7 +60,10 @@ Serializer::serialize(SerialInfo &sInfo)
 
     json_print_args(&print, json_print_pretty,
             JSON_OBJECT_BEGIN, 
-                JSON_KEY, "ir", 2,
+                JSON_KEY, "name", 4,
+                JSON_STRING, sInfo.func->getName().data(),
+                    sInfo.func->getName().size(),
+                JSON_KEY, "bb", 2,
                 JSON_ARRAY_BEGIN, -1);
 
     /* index all instruction and basicblock info */
@@ -75,7 +77,7 @@ Serializer::serialize(SerialInfo &sInfo)
 
     for (BasicBlock &bb : sInfo.func->getBasicBlockList()) {
         string startId = std::to_string(instId);
-        errs() << bb.getName().size() << '\n';
+        string bbIdStr = std::to_string(bbId);
         
         json_print_args(&print, json_print_pretty,
                 JSON_OBJECT_BEGIN,
@@ -83,12 +85,15 @@ Serializer::serialize(SerialInfo &sInfo)
                     JSON_STRING, bb.getName().data(), 
                         bb.getName().size(),
                     JSON_KEY, "startId", 7,
-                    JSON_STRING, startId.c_str(), startId.length(),
+                    JSON_INT, startId.c_str(), startId.length(),
+                    JSON_KEY, "id", 2,
+                    JSON_INT, bbIdStr.c_str(), bbIdStr.length(),
                     JSON_KEY, "inst", 4,
                     JSON_ARRAY_BEGIN, -1);
 
         for (Instruction &inst : bb) {
             string buffer;
+            string instIdStr = std::to_string(instId);
             instMap[&inst] = make_pair(instId, 0);
             instId ++;
             llvm::raw_string_ostream ss(buffer);
@@ -97,6 +102,8 @@ Serializer::serialize(SerialInfo &sInfo)
                     JSON_OBJECT_BEGIN,
                     JSON_KEY, "content", 7,
                     JSON_STRING, buffer.c_str(), buffer.length(),
+                    JSON_KEY, "id", 2,
+                    JSON_INT, instIdStr.c_str(), instIdStr.size(), 
                     JSON_OBJECT_END, -1);
         }
         bbMap[&bb] = make_pair(bbId, 0);
@@ -188,7 +195,6 @@ Serializer::serialize(SerialInfo &sInfo)
     json_print_args(&print, json_print_raw,
             JSON_ARRAY_END, JSON_OBJECT_END, -1);
 
-    fclose(fp);
     json_print_free(&print);
 
 }

@@ -2,13 +2,14 @@ express = require 'express'
 fs = require 'fs'
 spawn = require('child_process').spawn
 mongoose = require 'mongoose'
+getenv = require 'getenv'
 
 DB_PATH = 'mongodb://127.0.0.1/test'
 
 SourceCodeSchema = new mongoose.Schema
-    text : 'string'
-    type : 'string'
-    llvmir : 'string'
+    text : String
+    type : String
+    ir : mongoose.Schema.Types.Mixed
 
 SourceCode = mongoose.model 'SourceCode', SourceCodeSchema
 
@@ -38,20 +39,47 @@ app.post '/llvm/source', (req, res) ->
     sourceCode = new SourceCode
         text : req.param 'text'
         type : req.param 'type'
-        llvmir : ''
+        ir : {}
     res.type 'application/json'
+    
+    TMP_C_SOURCE = './tmp/test.c'
+    TMP_IR_CODE = './tmp/test.s'
+    TMP_JSON_OUTPUT = getenv('CHOPPER_JSON')
 
-
-    fs.writeFile './tmp/test.c', sourceCode.text, (err) ->
+    fs.writeFile TMP_C_SOURCE, sourceCode.text, (err) ->
         if err
             res.json 500, error : 'fail to write source code'
             return
         compiler = spawn 'clang-3.2', ['-emit-llvm','-S',
-            '-o','./tmp/test.s', './tmp/test.c']
+            '-o', TMP_IR_CODE, TMP_C_SOURCE]
         compiler.on 'exit', (code) ->
             if code is 0
                 console.log 'successfully compiled'
-                res.json '_id' : 123
+                """
+                opt-3.2 -S -load ./PDGPass.so -postdomtree -basicaa -globalsmodref-aa -scev-aa -aa-eval -memdep -pdg < $IR_FILE > result.ll
+                """
+                irFile = fs.openSync TMP_IR_CODE, 'r'
+                pdgpass = spawn 'opt-3.2', ['-S', '-load',
+                    '../src/PDGPass.so', '-postdomtree', '-basicaa'
+                    '-globalsmodref-aa', '-scev-aa', '-aa-eval',
+                    '-memdep', '-pdg'], {stdio : [irFile, null, null]}
+
+                pdgpass.on 'exit', (code) ->
+                    fs.closeSync irFile
+                    if code is 0
+                        fs.readFile TMP_JSON_OUTPUT, (err, data) ->
+                            if err
+                                res.json 500, error : 'Fail to open irfile'
+                            else
+                                sourceCode.ir = JSON.parse data
+                                res.json 200,
+                                    'ir' : sourceCode.ir
+                                    '_id' : 0
+                            false
+                    else
+                        res.json 500, error : 'PDGPass failed'
+                    return
+
             else
                 res.json 500,
                     error : 'Syntax error'

@@ -9,6 +9,8 @@ requirejs.config
             exports : '_'
         'jquery' :
             exports : 'jQuery'
+        'handlebars' :
+            exports : 'Handlebars'
 
     paths :
         'app' : '../js/app'

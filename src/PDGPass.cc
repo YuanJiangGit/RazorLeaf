@@ -9,6 +9,7 @@
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Analysis/PostDominators.h>
+#include <cstdlib>
 
 #include "CtrlDep.h"
 #include "GraphWriter.h"
@@ -22,6 +23,7 @@
 #include <string>
 #include <vector>
 #include <utility>
+#include <cassert>
 
 using namespace chopper;
 using std::string;
@@ -31,6 +33,33 @@ char PDGPass::ID = 0;
 
 PDGPass::PDGPass() : FunctionPass(PDGPass::ID)
 {
+}
+
+bool
+PDGPass::doInitialization(Module &m)
+{
+
+    char *jsonFilename;
+    if (!(jsonFilename = getenv(SERIALIZE_MARCO))) {
+        errs() << "set marco CHOPPER_JSON .\n";
+        assert(false);
+    }
+    if (!(outfile = fopen(jsonFilename, "w+"))) {
+        errs() << "fail to open " << jsonFilename << ".\n";
+        assert(false);
+    }
+
+    fwrite("[\n", sizeof(char), 2, outfile);
+    return false;
+}
+
+bool
+PDGPass::doFinalization(Module &m)
+{
+    fseek(outfile, -1, SEEK_CUR);
+    fwrite("]\n", sizeof(char), 2, outfile);
+    fclose(outfile);
+    return false;
 }
 
 PDG*
@@ -134,18 +163,21 @@ PDGPass::runOnFunction(Function &f)
         getAnalysis<AliasAnalysis>();
     PDG *pdg = buildPDG(f, mda, aa);
     string ddFilename = "dd." + f.getName().str() + ".dot";
-    string jsonFilename = f.getName().str() + ".json";
+
+    
     //GraphWriter::writePDG(pdg, ddFilename);
     Serializer::SerialInfo info = {
-        jsonFilename,
+        outfile,
         f.getName().str(),
         pdg, cdg, &f
     };
     Serializer::serialize(info);
+    fwrite("\n,", sizeof(char), 2, outfile);
     mda.releaseMemory();
 
     return false;
 }
+
 
 void
 PDGPass::getAnalysisUsage(AnalysisUsage &au) const

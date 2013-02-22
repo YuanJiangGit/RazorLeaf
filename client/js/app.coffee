@@ -14,11 +14,20 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'ace/ace'], ($, _, Bac
 
     IRContainer = Backbone.View.extend
         tagName : 'div'
-        className : 'ir-container'
+        className : 'ir-wrapper'
 
         onChangeIR : () ->
             ir = @model.get 'ir'
-            _.each ir, (func) ->
+            console.log ir
+            for func, i in ir
+                func.id = i
+            
+            @$el.html @template ir
+
+            $('.inst').on 'click', (e) =>
+                e.preventDefault()
+                e.stopPropagation()
+                console.log e.target
                 false
 
             return
@@ -28,13 +37,27 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'ace/ace'], ($, _, Bac
         
         initialize : () ->
             @model.on 'change', () =>
+                # console.log 'changed'
                 if @model.hasChanged 'ir'
                     @onChangeIR()
 
+            @template = Handlebars.compile """
+                {{#each this}}
+                <div class=func>{{this.name}}
+                    {{#each this.bb}}
+                    <div class=bb>{{this.name}}
+                        {{#each this.inst}}
+                        <div class=inst data-id={{this.id}} data-funcid={{../../id}}>{{this.content}}</div>
+                        {{/each}}
+                    </div>
+                    {{/each}}
+                </div> 
+                {{/each}}
+                """
             false
 
         render : () ->
-            $('body').append(@$el)
+            $('.ir-container').append(@$el)
             @
     
     CompileButton = Backbone.View.extend
@@ -47,10 +70,12 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'ace/ace'], ($, _, Bac
             e.stopPropagation()
             @model.set 'text', editor.getValue()
             Backbone.sync 'create', @model,
-                success : (data) ->
+                success : (data, response) =>
+                    console.log arguments
                     console.log 'success: ', data
-                    data.set 'id', data['_id']
-                    data.set 'ir', data['ir']
+                    @model.set 'id', response['_id']
+                    @model.set 'ir', response['ir']
+                    @model.id = undefined
 
                     false
                 error : (e) ->
@@ -60,7 +85,7 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'ace/ace'], ($, _, Bac
             false
 
         initialize : () ->
-            @$el.html 'Compiler2LLVM'
+            @$el.html 'Compile2LLVM IR'
             false
 
         render : () ->

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <exception>
+#include <cstdio>
 #include <llvm/Function.h>
 
 using std::string;
@@ -25,7 +26,7 @@ namespace chopper {
     class Serializer {
     public:
         typedef struct {
-            string filename;
+            FILE *fp;
             string funcname;
             PDG *pdg;
             CDG *cdg;

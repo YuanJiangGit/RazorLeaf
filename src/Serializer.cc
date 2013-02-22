@@ -59,6 +59,10 @@ Serializer::serialize(SerialInfo &sInfo)
         throw new SerializerException();
     }
 
+    json_print_args(&print, json_print_pretty,
+            JSON_OBJECT_BEGIN, 
+                JSON_KEY, "ir", 2,
+                JSON_ARRAY_BEGIN, -1);
 
     /* index all instruction and basicblock info */
     DenseMap<Instruction*, pair<size_t, size_t> > instMap;
@@ -68,13 +72,38 @@ Serializer::serialize(SerialInfo &sInfo)
     size_t instId = 0;
     PDG *pdg = sInfo.pdg;
     CDG *cdg = sInfo.cdg;
+
     for (BasicBlock &bb : sInfo.func->getBasicBlockList()) {
+        string startId = std::to_string(instId);
+        errs() << bb.getName().size() << '\n';
+        
+        json_print_args(&print, json_print_pretty,
+                JSON_OBJECT_BEGIN,
+                    JSON_KEY, "name", 4,
+                    JSON_STRING, bb.getName().data(), 
+                        bb.getName().size(),
+                    JSON_KEY, "startId", 7,
+                    JSON_STRING, startId.c_str(), startId.length(),
+                    JSON_KEY, "inst", 4,
+                    JSON_ARRAY_BEGIN, -1);
+
         for (Instruction &inst : bb) {
+            string buffer;
             instMap[&inst] = make_pair(instId, 0);
             instId ++;
+            llvm::raw_string_ostream ss(buffer);
+            ss << inst ;
+            json_print_args(&print, json_print_raw,
+                    JSON_OBJECT_BEGIN,
+                    JSON_KEY, "content", 7,
+                    JSON_STRING, buffer.c_str(), buffer.length(),
+                    JSON_OBJECT_END, -1);
         }
         bbMap[&bb] = make_pair(bbId, 0);
         bbId ++;
+        json_print_args(&print, json_print_raw,
+                JSON_ARRAY_END,
+                JSON_OBJECT_END, -1);
     }
     bbId = 0;
     for (CDG::iterator iter=cdg->begin(); iter!=cdg->end();
@@ -84,17 +113,17 @@ Serializer::serialize(SerialInfo &sInfo)
     }
 
     instId = 0;
-    json_print_args(&print, json_print_pretty,
-            JSON_OBJECT_BEGIN, JSON_KEY, "pdg", 3,
+    json_print_args(&print, json_print_pretty, JSON_ARRAY_END,
+            JSON_KEY, "pdg", 3,
             JSON_ARRAY_BEGIN, -1);
     // prcocess pdg 
     for (PDG::iterator iter=pdg->begin(); iter!=pdg->end();
             iter++, instId++) {
-        string buffer;
+        //string buffer;
         if (!iter->inst) continue;
         instMap[iter->inst].second = instId;
-        llvm::raw_string_ostream ss(buffer);
-        ss << *(iter->inst) ;
+        //llvm::raw_string_ostream ss(buffer);
+        //ss << *(iter->inst) ;
 
         // parent block id 
         BasicBlock *parent = iter->inst->getParent();
@@ -105,8 +134,8 @@ Serializer::serialize(SerialInfo &sInfo)
 
         json_print_args(&print, json_print_raw,
             JSON_OBJECT_BEGIN, 
-                JSON_KEY, "inst", 4,
-                JSON_STRING, buffer.c_str(), buffer.length(),
+                //JSON_KEY, "inst", 4,
+                //JSON_STRING, buffer.c_str(), buffer.length(),
                 JSON_KEY, "bbId", 4,
                 JSON_INT, pid.c_str(), pid.length(),
                 JSON_KEY, "realId", 6,

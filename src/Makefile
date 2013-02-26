@@ -25,7 +25,7 @@ PDGPass.so : GraphWriter.o PDGPass.o CtrlDep.o PDG.o Serializer.o
 	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS) ./libjson.a
 
 clean :
-	rm -f $(OBJS) $(LIBRARYNAME) *.svg *.dot *.json
+	rm -f $(OBJS) $(LIBRARYNAME) *.svg *.dot 
 
 .PHONY : testsimple cleansimple
 testsimple : ../test/simple/simple.bc

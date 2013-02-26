@@ -6,7 +6,7 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'ace/ace'], ($, _, Bac
             type : ''
             ir : {}
             sliceCriterion : {}
-            sliceResult : []
+            sliceResult : {}
             id : ''
         urlRoot : '/llvm/source'
 
@@ -32,6 +32,9 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'ace/ace'], ($, _, Bac
                 instId = parseInt target.dataset['id']
                 funcId = parseInt target.dataset['funcid']
 
+                $('.inst').removeClass 'sliceInst'
+                $(e.target).addClass 'sliceInst'
+
                 @model.set 'sliceCriterion',
                     'id' : instId
                     'funcid' : funcId
@@ -44,17 +47,23 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'ace/ace'], ($, _, Bac
             return
 
         onChangeSliceResult : () ->
-            changeSliceResult = @model.get 'sliceResult'
+            sliceResult = @model.get 'sliceResult'
             sliceCriterion = @model.get 'sliceCriterion'
             $funcDiv =
                 $(".func[data-funcid=#{sliceCriterion['funcid']}]")
-            _.each changeSliceResult, (csr) ->
-                realId = csr['realId']
-                console.log 'csr'
+            _.each sliceResult.inst, (sr) ->
+                realId = sr['realId']
                 $funcDiv.find(".inst[data-id=#{realId}]")
                     .addClass('sliced')
 
                 return
+
+            _.each sliceResult.bb, (sr) ->
+                realId = sr['realId']
+                $($funcDiv.find('.bb')[realId]).find('.inst')
+                    .addClass('sliced')
+                return
+
 
 
             return
@@ -123,28 +132,106 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'ace/ace'], ($, _, Bac
         events :
             'click' : 'onClick'
 
-        slice : () ->
+        forwardSlice : () ->
             sc = @model.get 'sliceCriterion'
             ir = @model.get('ir')
             func = ir[sc['funcid']]
             pdg = func['pdg']
+            cdg = func['cdg']
+            bbs = func['bb']
 
             worklist = []
             sliceResult = []
+            bbSliceResult = []
+
+            # the following 2 functions are for ctrl. deps.
+            # return [vertex in cdg]
+            findAllBBs = (bbRealId) ->
+                bbList = []
+                startBB = _.find cdg, (bb) ->
+                    bb.id is bbRealId
+                if startBB
+                    bbWorkList = []
+                    bbWorkList.push startBB
+                    while bbWorkList.length > 0
+                        currentBB = bbWorkList.shift()
+
+                        _.each currentBB.deps, (dep) ->
+                            candidateBB = cdg[dep.id]
+                            if not (_.find bbList, (_bb) -> _bb.realId is candidateBB.realId)
+                                # self loop
+                                bbList.push candidateBB
+                                if currentBB.realId isnt candidateBB.realId
+                                    # control deps should be a DAG
+                                    bbWorkList.concat candidateBB.deps
+
+                else
+                    console.warn 'error in cdg:', startBB, 'not found'
+                bbList
+
             candidate = _.find pdg, (v) ->
                 v.realId is sc['id']
 
             worklist.push candidate
 
             while worklist.length > 0
-                v = worklist.pop()
+                v = worklist.shift()
+
+                # process if the instruction is a terminator
+                rid = v['realId']
+                bbId = v['bbId']
+                bb = bbs[bbId]
+                idOffset = rid - bb.startId
+                console.log bb, rid, bbId
+                if idOffset >= 0 and idOffset < bb.inst.length
+                    termInst = bb.inst[idOffset]
+                    if termInst.hasOwnProperty 'term'
+                        # bbDeps : [ vertex in cdg ]
+                        bbDeps = findAllBBs bb.realId
+                        console.log bbDeps
+                        bbSliceResult = bbSliceResult.concat bbDeps
+                        _.each bbDeps, (bbDep) ->
+                            bbRef = bbs[bbDep.realId]
+
+                            _.each pdg, (vertex) ->
+                                if vertex.realId >= bbRef.startId and vertex.realId < bbRef.startId + bbRef.inst.length
+                                    if not (_.find worklist.concat(sliceResult), (v) -> v.realId is vertex.realId)
+                                        worklist.push vertex
+
+                                return
+                            return
+
+
+                        # find all deps inst
+                        console.log 'termInst', termInst
+                else
+                    console.warn 'the json may be broken'
+
+
                 _.each v.deps, (dep) ->
                     vertex = pdg[dep['id']]
-                    worklist = worklist.concat vertex.deps
+                    console.log vertex
+                    if (_.find sliceResult, (sr) -> vertex.realId is sr.realId)
+                        return
+
+                   
+                    _.each vertex.deps, (v) ->
+                        vid = v['realId']
+                        if (_.find sliceResult.concat(worklist), (sr) -> sr['realId'] is vid)
+                            return
+                        else
+                            worklist.push pdg[v.id]
+
+                        return
                     sliceResult.push vertex
+                    return
+                #console.log worklist
+                #"""
 
 
-            @model.set 'sliceResult', sliceResult
+            @model.set 'sliceResult',
+                'inst' : sliceResult
+                'bb' : bbSliceResult
 
             false
 
@@ -152,7 +239,11 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'ace/ace'], ($, _, Bac
             e.preventDefault()
             e.stopPropagation()
 
-            @slice()
+            # TODO remove following lines
+            @model.set 'sliceResult', []
+            $('.inst').removeClass('sliced')
+
+            @forwardSlice()
 
             false
 

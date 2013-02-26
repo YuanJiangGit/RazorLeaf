@@ -23,6 +23,7 @@ namespace chopper {
     private:
         string message;
     };
+    
     class Serializer {
     public:
         typedef struct {

@@ -1,0 +1,48 @@
+[{ 
+  "name" : "string", // function name
+  "bb" : //basic blocks 
+    [ 
+      {  
+        "name" : "string", //basic block
+        "startId" : "integer", //id of the first instruction
+        "id" : "integer", // basic block id
+        "inst" : //instructions in the basic block
+          [
+            {
+              "content" : "string", //instruction content
+              "term" : "string" //[option]type of the terminator if the instruction is terminator 
+            }
+          ]
+      }
+    ],
+  "pdg" : //data dependence graph based on instructions
+    [
+      {
+        "bbId" : "integer", //basic block id
+        "realId" : "integer", //id in bb 
+        "deps" :
+          [
+            {
+              "id" : "integer" // id in pdg
+            }
+          ]
+      }
+    ],
+  "cdg" : //control dependence graph based on basicblocks
+    [
+      {
+        "realId" : "integer", //id in bb
+        "name" : "string", //the name of basic block
+        "termInst" : "integer", //the terminator instruction id in bb 
+        "deps" : 
+          [
+            {
+              "id" : "integer" // id in cdg
+            }
+          ]
+      }
+    ]
+}]
+                
+
+

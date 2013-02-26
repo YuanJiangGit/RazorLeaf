@@ -155,7 +155,6 @@ PDGPass::runOnFunction(Function &f)
     CDG *cdg = cd.getCDG();
     //pdt.releaseMemory();
     string cdFilename = "cd." + f.getName().str() + ".dot";
-    //GraphWriter::writeCDG(cdg, cdFilename);
     
     MemoryDependenceAnalysis &mda = 
         getAnalysis<MemoryDependenceAnalysis>();
@@ -165,7 +164,10 @@ PDGPass::runOnFunction(Function &f)
     string ddFilename = "dd." + f.getName().str() + ".dot";
 
     
-    //GraphWriter::writePDG(pdg, ddFilename);
+    if (getenv("CHOPPER_DOT")) {
+    GraphWriter::writeCDG(cdg, cdFilename);
+    GraphWriter::writePDG(pdg, ddFilename);
+    }
     Serializer::SerialInfo info = {
         outfile,
         f.getName().str(),

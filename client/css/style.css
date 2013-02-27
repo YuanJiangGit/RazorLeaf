@@ -12,6 +12,10 @@
   background-color: #888;
   color: #fff;
 }
+.ir-container .func .bb .sliceInst {
+  background-color: #333;
+  color: #fff;
+}
 .ir-container .func .bb .inst {
   padding-left: 40px;
   cursor: pointer;

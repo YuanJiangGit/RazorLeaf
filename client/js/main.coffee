@@ -14,6 +14,11 @@ requirejs.config
 
     paths :
         'app' : '../js/app'
+        'chopper/slicer' : '../js/slicer'
+
+    callback : () ->
+        console.log arguments
+
 
 requirejs ['app'], (app) ->
     app.init()

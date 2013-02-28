@@ -15,6 +15,7 @@ requirejs.config
     paths :
         'app' : '../js/app'
         'chopper/slicer' : '../js/slicer'
+        'chopper/mediator' : '../js/mediator'
 
     callback : () ->
         console.log arguments

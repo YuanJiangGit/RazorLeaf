@@ -1,4 +1,5 @@
-define ['jquery', 'underscore', 'backbone', 'handlebars', 'chopper/slicer', 'ace/ace'], ($, _, Backbone, Handlebars, Slicer, ace) ->
+define ['jquery', 'underscore', 'backbone', 'handlebars', 'chopper/slicer', 'chopper/mediator', 'ace/ace'], ($, _, Backbone, Handlebars, Slicer, mediator, ace) ->
+
 
     SourceCode = Backbone.Model.extend
         defaults :
@@ -10,7 +11,8 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'chopper/slicer', 'ace
             id : ''
         urlRoot : '/llvm/source'
 
-    editor = ace.edit 'editor'
+    editorId = 'editor'
+    editor = ace.edit editorId
     editor.setTheme 'ace/theme/monokai'
     editor.getSession().setMode('ace/mode/c_cpp')
 
@@ -49,6 +51,11 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'chopper/slicer', 'ace
         onChangeSliceResult : () ->
             sliceResult = @model.get 'sliceResult'
             sliceCriterion = @model.get 'sliceCriterion'
+
+            if not (sliceResult.hasOwnProperty 'type')
+                $('.inst').removeClass 'sliced'
+                return
+
             $funcDiv =
                 $(".func[data-funcid=#{sliceCriterion['funcid']}]")
             _.each sliceResult.inst, (sr) ->
@@ -64,17 +71,23 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'chopper/slicer', 'ace
                     $($funcDiv.find('.bb')[realId]).find('.inst')
                         .addClass('sliced')
                     return
+                mediator.trigger 'slice:success'
             else if sliceResult.type is 'backward'
                 _.each sliceResult.bb, (sr) ->
                     termInstId = sr['termInst']
                     $funcDiv.find(".inst[data-id=#{termInstId}]")
                         .addClass('sliced')
+                mediator.trigger 'slice:success'
             else
                 console.warn 'Unknown slice result type'
 
             return
         
         initialize : () ->
+
+            mediator.on 'compile:success', () ->
+                false
+
             @model.on 'change', () =>
                 # console.log 'changed'
                 if @model.hasChanged 'ir'
@@ -102,8 +115,8 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'chopper/slicer', 'ace
             @
     
     CompileButton = Backbone.View.extend
-        tagName : 'button'
-        className : 'bt-cc'
+        tagName : 'div'
+        className : 'button bt-compile'
         events :
             'click' : 'onClick'
         onClick : (e) ->
@@ -115,10 +128,11 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'chopper/slicer', 'ace
                     @model.set 'id', response['_id']
                     @model.set 'ir', response['ir']
                     @model.id = undefined
-
+                    mediator.trigger 'compile:success'
                     false
                 error : (e) ->
-                    alert e['error']
+                    console.log arguments
+                    mediator.trigger 'compile:fail'
                     false
 
             false
@@ -128,18 +142,58 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'chopper/slicer', 'ace
             false
 
         render : () ->
-            $('body').append(@$el)
             @
+
+    ControlPanel = Backbone.View.extend
+        initialize : () ->
+            @$el = $('.control-panel')
+            @compileButton =
+                new CompileButton({model : @model})
+            @fSliceButton =
+                new Slicer.ForwardSliceButton({model : @model})
+            @bSliceButton =
+                new Slicer.BackwardSliceButton({model : @model})
+            false
+
+            @$btReslice = $('<div>').addClass('button bt-reslice')
+                .html('re-slice')
+
+            mediator.on 'compile:success', () =>
+                @compileButton.$el.addClass 'bt-disabled'
+                @$el.append @fSliceButton.$el
+                @$el.append @bSliceButton.$el
+                false
+
+            mediator.on 'slice:success', () =>
+                @fSliceButton.$el.addClass 'bt-disabled'
+                @bSliceButton.$el.addClass 'bt-disabled'
+                @$btReslice.on 'click', (e) =>
+                    e.preventDefault()
+                    e.stopPropagation()
+                    @fSliceButton.$el.removeClass 'bt-disabled'
+                    @bSliceButton.$el.removeClass 'bt-disabled'
+                    @model.set 'sliceResult', {}
+                    $(e.target).remove()
+                    false
+                @$el.append @$btReslice
+                false
+
+        render : () ->
+            @$el.append @compileButton.$el
+            @
+
 
 
     sourceCode = new SourceCode()
     irContainer = new IRContainer({model : sourceCode})
-    compileButton = new CompileButton({model : sourceCode})
-    fSliceButton = new Slicer.ForwardSliceButton({model : sourceCode})
-    bSliceButton = new Slicer.BackwardSliceButton({model : sourceCode})
+    controlPanel = new ControlPanel({model : sourceCode})
+
+    mediator.on 'compile:success', () ->
+        $("##{editorId}").hide()
+        false
 
     init : () ->
-        uis = [ irContainer, compileButton, fSliceButton, bSliceButton ]
+        uis = [ irContainer, controlPanel ]
         _.each uis, (ui) ->
             ui.render()
         false

@@ -23,5 +23,6 @@ requirejs.config
 
 requirejs ['app'], (app) ->
     app.init()
+    alert 'load complete'
     false
 

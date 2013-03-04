@@ -35,36 +35,30 @@ define ['backbone', 'underscore', 'jquery'], (Backbone, _, $) ->
                     break
             
             if instSc
-
-                for v, j in pdg
-                    if (_.find v.deps, (dep) -> dep.id is i) isnt undefined
-                        if (_.find worklist, (x) -> x is j) is undefined
-                            worklist.push j
-                            instSliceResult.push j
-
-                while worklist.length > 0
-                    instCan = worklist.shift()
-                    for v, j in pdg
-                        if (_.find v.deps, (dep) -> dep.id is instCan) isnt undefined
-                            if (_.find worklist.concat(instSliceResult), (x) -> x is j) is undefined
-                                worklist.push j
-                                instSliceResult.push j
-
                 # process cdg
                 processCdg = (_instSc) ->
+                    console.log 'process ', _instSc
                     bbSc = _instSc.bbId
                     bbWorkList = []
 
-                    for bb, i in cdg
+                    for bb, ibb in cdg
                         if bb.realId is bbSc
                             bbSc = bb
                             break
 
                     for v, j in cdg
-                        if (_.find v.deps, (dep) -> dep.id is i)
+                        if (_.find v.deps, (dep) -> dep.id is ibb)
                             if not (_.find bbSliceResult, (x) -> x is j)
                                 bbSliceResult.push j
                                 bbWorkList.push j
+
+                                termInstRealId = cdg[j].termInst
+
+                                for v, iv in pdg
+                                    if v.realId is termInstRealId
+                                        worklist.push iv
+                                        break
+
                     while bbWorkList.length > 0
                         bbCan = bbWorkList.shift()
                         for v, j in cdg
@@ -74,20 +68,45 @@ define ['backbone', 'underscore', 'jquery'], (Backbone, _, $) ->
                                 if (_.find bbWorkList.concat(bbSliceResult), (x) -> x is j) is undefined
                                     bbWorkList.push j
                                     bbSliceResult.push j
-                                    console.log 'pushing', j
+                                    console.log 'pusing',bbSliceResult
+
+                                    termInstRealId = cdg[j].termInst
+
+                                    for v, iv in pdg
+                                        if v.realId is termInstRealId
+                                            worklist.push iv
+                                            break
+
                     return
 
                 processCdg instSc
+
+                for v, j in pdg
+                    if (_.find v.deps, (dep) -> dep.id is i) isnt undefined
+                        if (_.find worklist, (x) -> x is j) is undefined
+                            worklist.push j
+                            instSliceResult.push j
+                            processCdg pdg[j]
+
+                while worklist.length > 0
+                    instCan = worklist.shift()
+                    for v, j in pdg
+                        if (_.find v.deps, (dep) -> dep.id is instCan) isnt undefined
+                            if (_.find worklist.concat(instSliceResult), (x) -> x is j) is undefined
+                                worklist.push j
+                                instSliceResult.push j
+                                processCdg pdg[j]
             else
                 console.warn 'error:', sc, 'not found'
 
             console.log cdg
             instSliceResult = _.map instSliceResult, (instId) ->
                 pdg[instId]
+            """
             for isr in instSliceResult
                 processCdg isr
+            """
 
-            console.log bbSliceResult
             bbSliceResult = _.map bbSliceResult, (bbId) ->
                 cdg[bbId]
             console.log bbSliceResult

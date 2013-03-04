@@ -130,8 +130,9 @@ define ['jquery', 'underscore', 'backbone', 'handlebars', 'chopper/slicer', 'cho
                     @model.id = undefined
                     mediator.trigger 'compile:success'
                     false
-                error : (e) ->
+                error : (e, xhr) ->
                     console.log arguments
+                    alert xhr.responseText
                     mediator.trigger 'compile:fail'
                     false
 

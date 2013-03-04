@@ -1,7 +1,8 @@
 #!/bin/zsh
 rm *.svg *.dot
 
-IR_FILE=../test/simple/t1.ll
+# IR_FILE=../test/simple/t1.ll
+IR_FILE=./test.ll
 export CHOPPER_JSON=$PWD/test.json
 export CHOPPER_DOT=1
 # opt-3.2 -load ./PDGPass.so -postdomtree -basicaa -globalsmodref-aa -scev-aa -aa-eval -memdep -pdg < ../test/simple/t1.ll > result.bc

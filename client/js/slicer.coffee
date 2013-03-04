@@ -25,7 +25,6 @@ define ['backbone', 'underscore', 'jquery'], (Backbone, _, $) ->
             bbs = func['bb']
 
             worklist = []
-            bbWorkList = []
             instSliceResult = []
             bbSliceResult = []
 
@@ -36,7 +35,6 @@ define ['backbone', 'underscore', 'jquery'], (Backbone, _, $) ->
                     break
             
             if instSc
-
 
                 for v, j in pdg
                     if (_.find v.deps, (dep) -> dep.id is i) isnt undefined
@@ -53,35 +51,42 @@ define ['backbone', 'underscore', 'jquery'], (Backbone, _, $) ->
                                 instSliceResult.push j
 
                 # process cdg
-                bbSc = instSc.bbId
+                processCdg = (_instSc) ->
+                    bbSc = _instSc.bbId
+                    bbWorkList = []
 
-                for bb, i in cdg
-                    if bb.realId is bbSc
-                        bbSc = bb
-                        break
+                    for bb, i in cdg
+                        if bb.realId is bbSc
+                            bbSc = bb
+                            break
 
-                for v, j in cdg
-                    if (_.find v.deps, (dep) -> dep.id is i)
-                        if not (_.find bbSliceResult, (x) -> x is j)
-                            bbSliceResult.push j
-                            bbWorkList.push j
-                while bbWorkList.length > 0
-                    bbCan = bbWorkList.shift()
                     for v, j in cdg
-                        if (_.find v.deps, (dep) -> dep.id is bbCan) isnt undefined
-                            console.log j, bbWorkList.concat(bbSliceResult)
-                            console.log (_.find bbWorkList.concat(bbSliceResult), (x) -> x is j)
-                            if (_.find bbWorkList.concat(bbSliceResult), (x) -> x is j) is undefined
-                                bbWorkList.push j
+                        if (_.find v.deps, (dep) -> dep.id is i)
+                            if not (_.find bbSliceResult, (x) -> x is j)
                                 bbSliceResult.push j
-                                console.log 'pushing', j
+                                bbWorkList.push j
+                    while bbWorkList.length > 0
+                        bbCan = bbWorkList.shift()
+                        for v, j in cdg
+                            if (_.find v.deps, (dep) -> dep.id is bbCan) isnt undefined
+                                console.log j, bbWorkList.concat(bbSliceResult)
+                                console.log (_.find bbWorkList.concat(bbSliceResult), (x) -> x is j)
+                                if (_.find bbWorkList.concat(bbSliceResult), (x) -> x is j) is undefined
+                                    bbWorkList.push j
+                                    bbSliceResult.push j
+                                    console.log 'pushing', j
+                    return
 
+                processCdg instSc
             else
                 console.warn 'error:', sc, 'not found'
 
             console.log cdg
             instSliceResult = _.map instSliceResult, (instId) ->
                 pdg[instId]
+            for isr in instSliceResult
+                processCdg isr
+
             console.log bbSliceResult
             bbSliceResult = _.map bbSliceResult, (bbId) ->
                 cdg[bbId]
@@ -168,7 +173,6 @@ define ['backbone', 'underscore', 'jquery'], (Backbone, _, $) ->
                     if termInst.hasOwnProperty 'term'
                         # bbDeps : [ vertex in cdg ]
                         bbDeps = findAllBBs bb.realId
-                        console.log bbDeps
                         bbSliceResult = bbSliceResult.concat bbDeps
                         _.each bbDeps, (bbDep) ->
                             bbRef = bbs[bbDep.realId]
@@ -191,18 +195,21 @@ define ['backbone', 'underscore', 'jquery'], (Backbone, _, $) ->
                 _.each v.deps, (dep) ->
                     vertex = pdg[dep['id']]
                     console.log vertex
-                    if (_.find sliceResult, (sr) -> vertex.realId is sr.realId)
+                    if (_.find sliceResult.concat(worklist), (sr) -> vertex.realId is sr.realId)
                         return
-
                    
+                    """
                     _.each vertex.deps, (v) ->
-                        vid = v['realId']
+                        vid = pdg[v.id]['realId']
+
                         if (_.find sliceResult.concat(worklist), (sr) -> sr['realId'] is vid)
                             return
                         else
                             worklist.push pdg[v.id]
 
                         return
+                    """
+                    worklist.push vertex
                     sliceResult.push vertex
                     return
                 #console.log worklist

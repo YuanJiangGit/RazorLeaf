@@ -1,0 +1,19 @@
+* llvm-slicer
+  A static llvm-IR slicer.
+** Features
+   - forward and backward slicing based on llvm-IR
+   - a web GUI
+** Implementations
+*** Program dependence graph
+**** Control dependence
+**** Data dependence
+*** Intraprocedure program slicing
+**** Forward slicing 
+**** Backward slicing 
+*** TODO System dependence graph
+
+*** TODO Interprocedure progran slicing
+** License
+   Under MIT license.([http://www.opensource.org/licenses/mit-license])
+
+

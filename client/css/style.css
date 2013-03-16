@@ -1,0 +1,77 @@
+body {
+  background-color: #000;
+}
+.editor {
+  width: inherit;
+  height: 540px;
+}
+.logo {
+  position: fixed;
+}
+.logo h3 {
+  display: block;
+  text-align: center;
+  -webkit-box-shadow: 0 0 10px #9c9c9c;
+  box-shadow: 0 0 10px #9c9c9c;
+  -webkit-transform: rotate(-45deg) translateX(-60px);
+  transform: rotate(-45deg) translateX(-60px);
+  padding: 3px 0 3px 0;
+  width: 220px;
+}
+.logo h3 a {
+  color: #ffc;
+}
+.top-margin {
+  height: 20px;
+}
+.control-panel {
+  position: fixed;
+  bottom: 50px;
+  right: 0;
+  left: auto;
+}
+.control-panel .button {
+  -webkit-transition-duration: 0.5s;
+  -webkit-transform: 0.5s;
+  transform: 0.5s;
+  cursor: pointer;
+  background-color: #fff;
+  width: 120px;
+  padding: 3px 0 3px 0;
+  text-aligin: center;
+  border-style: solid;
+  border-color: #ff0;
+}
+.control-panel .bt-disabled {
+  background-color: #222;
+  cursor: default;
+}
+.control-panel .bt-compile {
+  background-color: #fcfc00;
+}
+.ir-container .func {
+  padding: 0 10px 0 10px;
+  background-color: #f88406;
+}
+.ir-container .func:hover {
+  background-color: #f89406;
+}
+.ir-container .func .bb:hover {
+  background-color: #ffc406;
+}
+.ir-container .func .bb .sliced {
+  background-color: #888;
+  color: #fff;
+}
+.ir-container .func .bb .sliceInst {
+  background-color: #333;
+  color: #fff;
+}
+.ir-container .func .bb .inst {
+  padding-left: 40px;
+  cursor: pointer;
+}
+.ir-container .func .bb .inst:hover {
+  color: #fff;
+  background-color: #000;
+}

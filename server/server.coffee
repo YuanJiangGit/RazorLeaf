@@ -1,29 +1,29 @@
 express = require 'express'
 fs = require 'fs'
 spawn = require('child_process').spawn
-mongoose = require 'mongoose'
+# mongoose = require 'mongoose'
 getenv = require 'getenv'
 
 DB_PATH = 'mongodb://127.0.0.1/test'
 
-SourceCodeSchema = new mongoose.Schema
-    text : String
-    type : String
-    ir : mongoose.Schema.Types.Mixed
-
-SourceCode = mongoose.model 'SourceCode', SourceCodeSchema
+# SourceCodeSchema = new mongoose.Schema
+#     text : String
+#     type : String
+#     ir : mongoose.Schema.Types.Mixed
+# 
+# SourceCode = mongoose.model 'SourceCode', SourceCodeSchema
 
 app = express()
 
 app.configure () ->
     app.use express.bodyParser()
 
-    mongoose.connect DB_PATH, (err) ->
-        if err
-            throw err
-        return
+    # mongoose.connect DB_PATH, (err) ->
+    #     if err
+    #         throw err
+    #     return
 
-    return
+    # return
     
 
 app.get '/', (req, res) ->

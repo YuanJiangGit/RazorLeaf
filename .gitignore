@@ -11,3 +11,8 @@
 *.lai
 *.la
 *.a
+
+server/node_modules
+server/tmp
+data
+client/vendor/ace

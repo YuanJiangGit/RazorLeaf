@@ -1,0 +1,23 @@
+!!! 5
+html 
+  head
+    link(rel='stylesheet', 
+      type='text/css', href='css/reveal.css')
+    link(rel='stylesheet', 
+      type='text/css', href='css/theme-beige.css')
+    link(rel='stylesheet', 
+      type='text/css', href='css/zenburn.css')
+    style(type='text/css')
+      .reveal section img {
+        box-shadow: none;
+        border-style : none;
+      }
+  body
+    div.reveal
+      div.slides
+        section(data-markdown="slides.md", data-separator="^;;;", data-vertical="^;;") section
+
+    script(src='js/head.min.js')
+    script(src='js/highlight.js')
+    script(src='js/reveal.js')
+    script(src='js/app.js')

@@ -12,6 +12,8 @@ REVEAL_JS := js/reveal.js \
 	js/markdown.js \
 	js/showdown.js \
 	js/highlight.js \
+	js/forkit.js \
+	css/forkit.css \
 	css/reveal.css \
 	css/zenburn.css \
 	css/theme-default.css \
@@ -62,4 +64,10 @@ css/theme-beige.css : vendor/reveal-js/css/theme/beige.css
 css/zenburn.css : vendor/reveal-js/lib/css/zenburn.css
 	cp $< $@
 
+# copying forkit.js
+js/forkit.js : vendor/forkit-js/js/forkit.js
+	cp $< $@
+
+css/forkit.css : vendor/forkit-js/css/forkit.css
+	cp $< $@
 

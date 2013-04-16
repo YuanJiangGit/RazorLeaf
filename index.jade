@@ -9,16 +9,29 @@ html
       type='text/css', href='css/zenburn.css')
     link(rel='stylesheet', 
       type='text/css', href='css/forkit.css')
+    //link(rel='stylesheet', 
+    //  type='text/css', href='css/pdf.css')
     style(type='text/css')
       .reveal section img {
         box-shadow: none;
         border-style : none;
+      }
+      .timebar {
+        width : 0;
+        height : 2px;
+        z-index : 200;
+        position : absolute;
+        bottom : 0;
+        left : 0;
+        background-color : #ee0000;
       }
   body
 
     div.reveal
       div.slides
         section(data-markdown="slides.md", data-separator="^;;;", data-vertical="^;;") section
+
+    div.timebar#timebar
 
     a.forkit(href="/", data-text="Razor Leaf", data-text-detached="DEMO")
 

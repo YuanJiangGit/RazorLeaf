@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html> 
+  <head>
+    <link rel="stylesheet" type="text/css" href="css/reveal.css">
+    <link rel="stylesheet" type="text/css" href="css/theme-beige.css">
+    <link rel="stylesheet" type="text/css" href="css/zenburn.css">
+    <link rel="stylesheet" type="text/css" href="css/forkit.css">
+    <!--link(rel='stylesheet', -->
+    <!--  type='text/css', href='css/pdf.css')-->
+    <style type="text/css">
+      .reveal section img {
+        box-shadow: none;
+        border-style : none;
+      }
+      .timebar {
+        width : 0;
+        height : 2px;
+        z-index : 200;
+        position : absolute;
+        bottom : 0;
+        left : 0;
+        background-color : #ee0000;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section data-markdown="slides.md" data-separator="^;;;" data-vertical="^;;">section</section>
+      </div>
+    </div>
+    <div id="timebar" class="timebar"></div><a href="/" data-text="Razor Leaf" data-text-detached="DEMO" class="forkit"></a>
+    <script src="js/head.min.js"></script>
+    <script src="js/highlight.js"></script>
+    <script src="js/reveal.js"></script>
+    <script src="js/forkit.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>

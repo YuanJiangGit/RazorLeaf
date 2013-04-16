@@ -1,5 +1,7 @@
-## RazorLeaf
-A static program slicer based on LLVM IR  
+## 本科毕业设计中期答辩
+#### 基于LLVM的程序静态切片器的设计与实现
+Design & implementation   
+of static program slicer based on LLVM IR  
 <br> <br> <br>
 <small>
 叶家彬  
@@ -140,5 +142,10 @@ A worklist algorithm :
 
 ;;;
 
+### future work
+
+Test and evaluation.
+
 THANKS
 ======
+

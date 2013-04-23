@@ -106,7 +106,7 @@ CtrlDep::tarjanOLCA(DomTreeNode *root)
                     */
                 edge.isMarked = true;
                 if (lca) {
-                    errs() << lca->getName() << ".\n";
+                    //errs() << lca->getName() << ".\n";
                 }
                 if (lca == edge.first) {
                     cdg->addEdge(edge.first, edge.first);

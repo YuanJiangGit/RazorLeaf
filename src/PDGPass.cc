@@ -10,6 +10,7 @@
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Analysis/PostDominators.h>
 #include <cstdlib>
+#include <sys/time.h>
 
 #include "CtrlDep.h"
 #include "GraphWriter.h"
@@ -147,8 +148,11 @@ PDGPass::runOnFunction(Function &f)
         InstInfo
     > InstMap;
 
-    errs() << "in function " << f.getName() << " .\n";
-
+    //errs() << "in function " << f.getName() << " .\n";
+#ifdef _DEBUG
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+#endif
     PostDominatorTree &pdt =
         getAnalysis<PostDominatorTree>();
     CtrlDep cd(&f, &pdt);
@@ -161,8 +165,12 @@ PDGPass::runOnFunction(Function &f)
     AliasAnalysis &aa =
         getAnalysis<AliasAnalysis>();
     PDG *pdg = buildPDG(f, mda, aa);
+#ifdef _DEBUG
+    gettimeofday(&end, NULL);
+    errs() << f.getName() << ":" << (end.tv_sec  - start.tv_sec)*1000000 + 
+      (end.tv_usec - start.tv_usec) << "\n";
+#endif
     string ddFilename = "dd." + f.getName().str() + ".dot";
-
     
     if (getenv("CHOPPER_DOT")) {
     GraphWriter::writeCDG(cdg, cdFilename);

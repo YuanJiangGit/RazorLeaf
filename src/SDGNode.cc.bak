@@ -1,0 +1,79 @@
+
+#include "SDGPass.h"
+#include "pdg/PDGPass.h"
+#include "pdg/PDG.h"
+
+#include <llvm/Analysis/PostDominators.h>
+
+using namespace llvm;
+using namespace razorleaf;
+using std::make_pair;
+
+SDGPass::SDGPass():CallGraphSCCPass(ID) {}
+
+void SDGPass::buildSDG() {
+  for(Function *func : functionSet) {
+    PDGPass &pdgPass = getAnalysis<PDGPass>(*func);
+    PDG *pdg = pdgPass.getPDG();
+    errs() << "pdg content : " << "\n";
+    for(PDG::iterator iter = pdg->begin();
+        iter != pdg->end(); iter++) {
+      if (!iter->inst) continue;
+      errs() << *(iter->inst) << "\n";
+    }
+    errs() << "END of pdg content" << "\n";
+  }
+}
+
+bool SDGPass::runOnSCC(CallGraphSCC &cg) {
+  for (CallGraphNode* node : cg) {
+    Function *f = node->getFunction();
+    if (!f) continue;
+    vector<Function*> productions;
+    for (CallGraphNode::CallRecord cr : *node) {
+      CallGraphNode *n = cr.second ;
+      Function *p;
+      if ((p = n->getFunction())) {
+        productions.push_back(p);
+      }
+    }
+    linkageGrammarList.push_back(make_pair(
+          f, productions));
+  }
+  return false;
+}
+
+bool SDGPass::doFinalization(CallGraph &cg) {
+  for (LinkageGrammar &lg : linkageGrammarList) {
+    Function *source = lg.first;
+    functionSet.insert(source);
+
+    PDGPass &pdgPass = getAnalysis<PDGPass>(*source);
+    PDG *pdg = pdgPass.getPDG();
+    errs() << "pdg content : " << "\n";
+    for(PDG::iterator iter = pdg->begin();
+        iter != pdg->end(); iter++) {
+      if (!iter->inst) continue;
+      errs() << *(iter->inst) << "\n";
+    }
+    errs() << "END of pdg content" << "\n";
+ 
+    for (Function *p : lg.second) {
+      functionSet.insert(p);
+    }
+  }
+
+ // buildSDG();
+  errs() << ">>--END--<<\n";
+  return false;
+}
+
+void SDGPass::getAnalysisUsage(AnalysisUsage &au) const {
+  au.setPreservesAll();
+  au.addRequired<PDGPass>();
+}
+
+char SDGPass::ID = 0;
+static RegisterPass<SDGPass> XSDG("sdg",
+    "System Dependence Graph Pass", false, true);
+
